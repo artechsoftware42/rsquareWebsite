@@ -7,6 +7,10 @@ router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        console.log("LOGIN REQUEST BODY:", { username, password });
+        console.log("LOGIN SESSION ID BEFORE:", req.sessionID);
+        console.log("LOGIN SESSION BEFORE:", req.session);
+
         if (!username || !password) {
             return res.status(400).json({
                 success: false,
@@ -19,6 +23,8 @@ router.post("/login", async (req, res) => {
             isActive: true,
         }).lean();
 
+        console.log("ADMIN DOC:", adminDoc);
+
         if (!adminDoc) {
             return res.status(404).json({
                 success: false,
@@ -29,6 +35,8 @@ router.post("/login", async (req, res) => {
         const isMatch =
             username.trim() === String(adminDoc.username).trim() &&
             password === String(adminDoc.password);
+
+        console.log("PASSWORD MATCH:", isMatch);
 
         if (!isMatch) {
             return res.status(401).json({
@@ -42,14 +50,19 @@ router.post("/login", async (req, res) => {
             isAuthenticated: true,
         };
 
+        console.log("LOGIN SESSION AFTER ASSIGN:", req.session);
+
         req.session.save((err) => {
             if (err) {
-                console.error("Session save error:", err);
+                console.error("SESSION SAVE ERROR:", err);
                 return res.status(500).json({
                     success: false,
                     message: "Session kaydedilemedi.",
                 });
             }
+
+            console.log("LOGIN SESSION SAVED ID:", req.sessionID);
+            console.log("LOGIN SESSION SAVED DATA:", req.session);
 
             return res.status(200).json({
                 success: true,
@@ -60,7 +73,7 @@ router.post("/login", async (req, res) => {
             });
         });
     } catch (error) {
-        console.error("Admin login error:", error);
+        console.error("ADMIN LOGIN ERROR:", error);
         return res.status(500).json({
             success: false,
             message: "Sunucu hatası.",
@@ -70,6 +83,10 @@ router.post("/login", async (req, res) => {
 
 router.get("/me", (req, res) => {
     try {
+        console.log("ME COOKIE HEADER:", req.headers.cookie);
+        console.log("ME SESSION ID:", req.sessionID);
+        console.log("ME SESSION DATA:", req.session);
+
         if (!req.session?.admin?.isAuthenticated) {
             return res.status(401).json({
                 success: false,
@@ -84,7 +101,7 @@ router.get("/me", (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Admin me error:", error);
+        console.error("ADMIN ME ERROR:", error);
         return res.status(500).json({
             success: false,
             message: "Sunucu hatası.",
@@ -101,7 +118,12 @@ router.post("/logout", (req, res) => {
             });
         }
 
-        res.clearCookie("admin_sid");
+        res.clearCookie("admin_sid", {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            path: "/",
+        });
 
         return res.status(200).json({
             success: true,

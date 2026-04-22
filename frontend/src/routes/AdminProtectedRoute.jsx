@@ -1,15 +1,28 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { getAdminMe, clearAdminSessionMarkers } from "../services/adminAuthService";
+import {
+    getAdminMe,
+    clearAdminSessionMarkers,
+    hasActiveAdminSessionMarker,
+} from "../services/adminAuthService";
 
 function AdminProtectedRoute({ children }) {
-    const [status, setStatus] = useState("loading");
+    const [status, setStatus] = useState(() => {
+        return hasActiveAdminSessionMarker() ? "authorized" : "loading";
+    });
 
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                await getAdminMe();
-                setStatus("authorized");
+                const data = await getAdminMe();
+
+                if (data?.success) {
+                    setStatus("authorized");
+                    return;
+                }
+
+                clearAdminSessionMarkers();
+                setStatus("unauthorized");
             } catch (error) {
                 clearAdminSessionMarkers();
                 setStatus("unauthorized");

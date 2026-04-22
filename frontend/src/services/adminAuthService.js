@@ -30,13 +30,7 @@ export const loginAdmin = async ({ username, password }) => {
         }),
     });
 
-    const data = await parseResponse(response);
-
-    if (data.success) {
-        sessionStorage.setItem("adminSessionActive", "true");
-    }
-
-    return data;
+    return parseResponse(response);
 };
 
 export const getAdminMe = async () => {

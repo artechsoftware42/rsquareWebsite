@@ -40,7 +40,6 @@ const AdminLogin = () => {
             });
 
             if (data.success) {
-                setMessage("Login successful.");
                 navigate("/admin", { replace: true });
                 return;
             }

@@ -8,8 +8,10 @@ import {
     LayoutPanelTop,
     Globe,
     ListOrdered,
-    Type,
     Image as ImageIcon,
+    Settings2,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import {
     getPageByKey,
@@ -70,6 +72,7 @@ const cardStyle = {
 const sectionCardStyle = {
     ...cardStyle,
     marginBottom: "18px",
+    padding: "20px",
 };
 
 const fieldRowStyle = {
@@ -204,7 +207,9 @@ const createNewListItem = (field) => {
     const firstItem = Array.isArray(field?.value) ? field.value[0] : null;
 
     if (firstItem) {
-        return normalizeItemByShape(firstItem);
+        const item = normalizeItemByShape(firstItem);
+        if (!item.id) item.id = `item-${Date.now()}`;
+        return item;
     }
 
     if (field?.id === "navLinks") {
@@ -251,7 +256,7 @@ const getUploadUrlFromResponse = (data) => {
     );
 };
 
-const AdminPanel = () => {
+function AdminPanel() {
     const [pages, setPages] = useState([]);
     const [selectedPageKey, setSelectedPageKey] = useState("");
     const [selectedPageData, setSelectedPageData] = useState(null);
@@ -323,38 +328,6 @@ const AdminPanel = () => {
         updatePageState((prev) => {
             const next = deepClone(prev);
             next.sections[sectionIndex].fields[fieldIndex].value = nextValue;
-            return next;
-        });
-    };
-
-    const updateFieldLabel = (sectionIndex, fieldIndex, value) => {
-        updatePageState((prev) => {
-            const next = deepClone(prev);
-            next.sections[sectionIndex].fields[fieldIndex].label = value;
-            return next;
-        });
-    };
-
-    const updateSectionLabel = (sectionIndex, value) => {
-        updatePageState((prev) => {
-            const next = deepClone(prev);
-            next.sections[sectionIndex].label = value;
-            return next;
-        });
-    };
-
-    const updateSectionId = (sectionIndex, value) => {
-        updatePageState((prev) => {
-            const next = deepClone(prev);
-            next.sections[sectionIndex].id = value;
-            return next;
-        });
-    };
-
-    const updateSectionType = (sectionIndex, value) => {
-        updatePageState((prev) => {
-            const next = deepClone(prev);
-            next.sections[sectionIndex].type = value;
             return next;
         });
     };
@@ -431,7 +404,6 @@ const AdminPanel = () => {
             setMessage("");
 
             await savePageByKey(selectedPageData.pageKey, {
-                pageKey: selectedPageData.pageKey,
                 title: selectedPageData.title,
                 sections: selectedPageData.sections,
             });
@@ -628,15 +600,6 @@ const AdminPanel = () => {
                             <ListOrdered size={15} />
                             {label || "Liste"}
                         </div>
-
-                        <button
-                            type="button"
-                            style={smallButtonStyle}
-                            onClick={() => handleAddListItem(sectionIndex, fieldIndex, path)}
-                        >
-                            <Plus size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-                            Kategori / Item Ekle
-                        </button>
                     </div>
 
                     <div style={{ display: "grid", gap: "12px" }}>
@@ -646,7 +609,7 @@ const AdminPanel = () => {
 
                         {value.map((item, index) => (
                             <div
-                                key={item?.id || `${path.join("-")}-${index}`}
+                                key={`item-${sectionIndex}-${fieldIndex}-${path.join("-")}-${index}`}
                                 style={{
                                     border: "1px solid #e5e7eb",
                                     borderRadius: "16px",
@@ -665,7 +628,11 @@ const AdminPanel = () => {
                                     }}
                                 >
                                     <strong style={{ fontSize: "14px", color: "#111827" }}>
-                                        {label || "Item"} #{index + 1}
+                                        {item?.label?.tr ||
+                                            item?.text?.tr ||
+                                            item?.code ||
+                                            item?.id ||
+                                            `${label || "Item"} ${index + 1}`}
                                     </strong>
 
                                     <button
@@ -689,6 +656,18 @@ const AdminPanel = () => {
                                 })}
                             </div>
                         ))}
+                    </div>
+
+
+                    <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
+                        <button
+                            type="button"
+                            style={smallButtonStyle}
+                            onClick={() => handleAddListItem(sectionIndex, fieldIndex, path)}
+                        >
+                            <Plus size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+                            Öğe Ekle
+                        </button>
                     </div>
                 </div>
             );
@@ -819,60 +798,32 @@ const AdminPanel = () => {
     const renderField = (field, sectionIndex, fieldIndex) => {
         return (
             <div
-                key={field.id || `${sectionIndex}-${fieldIndex}`}
+                key={`field-${sectionIndex}-${fieldIndex}`}
                 style={{
                     border: "1px solid #e5e7eb",
                     borderRadius: "18px",
-                    padding: "14px",
+                    padding: "16px",
                     background: "#fcfdff",
                     marginBottom: "14px",
                 }}
             >
                 <div
                     style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                         gap: "12px",
                         marginBottom: "14px",
+                        flexWrap: "wrap",
                     }}
                 >
-                    <div style={fieldRowStyle}>
-                        <span style={labelStyle}>Field ID</span>
-                        <input
-                            value={field.id || ""}
-                            onChange={(e) =>
-                                updatePageState((prev) => {
-                                    const next = deepClone(prev);
-                                    next.sections[sectionIndex].fields[fieldIndex].id = e.target.value;
-                                    return next;
-                                })
-                            }
-                            style={inputStyle}
-                        />
-                    </div>
-
-                    <div style={fieldRowStyle}>
-                        <span style={labelStyle}>Field Type</span>
-                        <input
-                            value={field.type || ""}
-                            onChange={(e) =>
-                                updatePageState((prev) => {
-                                    const next = deepClone(prev);
-                                    next.sections[sectionIndex].fields[fieldIndex].type = e.target.value;
-                                    return next;
-                                })
-                            }
-                            style={inputStyle}
-                        />
-                    </div>
-
-                    <div style={fieldRowStyle}>
-                        <span style={labelStyle}>Field Label</span>
-                        <input
-                            value={field.label || ""}
-                            onChange={(e) => updateFieldLabel(sectionIndex, fieldIndex, e.target.value)}
-                            style={inputStyle}
-                        />
+                    <div>
+                        <div style={{ fontSize: "18px", fontWeight: 800, color: "#111827" }}>
+                            {field.label || field.id || "Field"}
+                        </div>
+                        <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>
+                            Değiştirilebilir içerik alanı
+                        </div>
                     </div>
                 </div>
 
@@ -974,13 +925,13 @@ const AdminPanel = () => {
                 <div style={stickyHeaderStyle}>
                     <div>
                         <div style={{ fontSize: "12px", fontWeight: 700, color: "#02acfa", marginBottom: "6px" }}>
-                            PAGEKEY
+                            DÜZENLENEN SAYFA
                         </div>
                         <div style={{ fontSize: "28px", fontWeight: 800, color: "#111827" }}>
-                            {selectedPageData?.pageKey || "Seçim yok"}
+                            {selectedPageData?.title || selectedPageData?.pageKey || "Seçim yok"}
                         </div>
                         <div style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px" }}>
-                            {selectedPageData?.title || "Sayfa başlığı bulunamadı"}
+                            İçerik düzenleme görünümü
                         </div>
                     </div>
 
@@ -1013,36 +964,23 @@ const AdminPanel = () => {
                     </div>
                 ) : null}
 
-                {loadingPage ? (
-                    <div style={cardStyle}>Sayfa verisi yükleniyor...</div>
-                ) : null}
+                {loadingPage ? <div style={cardStyle}>Sayfa verisi yükleniyor...</div> : null}
 
                 {!loadingPage && selectedPageData ? (
                     <div style={{ display: "grid", gap: "18px" }}>
                         <div style={cardStyle}>
-                            <div
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "repeat(2, minmax(0,1fr))",
-                                    gap: "12px",
-                                }}
-                            >
-                                <div style={fieldRowStyle}>
-                                    <span style={labelStyle}>Page Key</span>
-                                    <input
-                                        value={selectedPageData.pageKey || ""}
-                                        onChange={(e) =>
-                                            updatePageState((prev) => ({
-                                                ...prev,
-                                                pageKey: e.target.value,
-                                            }))
-                                        }
-                                        style={inputStyle}
-                                    />
+                            <div>
+                                <div style={{ fontSize: "22px", fontWeight: 800, color: "#111827" }}>
+                                    {selectedPageData.title || "Başlıksız Sayfa"}
                                 </div>
+                                <div style={{ color: "#6b7280", fontSize: "14px", marginTop: "4px" }}>
+                                    Sayfa içeriği
+                                </div>
+                            </div>
 
+                            <div style={{ marginTop: "16px" }}>
                                 <div style={fieldRowStyle}>
-                                    <span style={labelStyle}>Title</span>
+                                    <span style={labelStyle}>Başlık</span>
                                     <input
                                         value={selectedPageData.title || ""}
                                         onChange={(e) =>
@@ -1058,7 +996,7 @@ const AdminPanel = () => {
                         </div>
 
                         {(selectedPageData.sections || []).map((section, sectionIndex) => (
-                            <div key={section.id || sectionIndex} style={sectionCardStyle}>
+                            <div key={`section-${sectionIndex}`} style={sectionCardStyle}>
                                 <div
                                     style={{
                                         display: "flex",
@@ -1069,44 +1007,13 @@ const AdminPanel = () => {
                                         flexWrap: "wrap",
                                     }}
                                 >
-                                    <div style={{ fontSize: "20px", fontWeight: 800, color: "#111827" }}>
-                                        {section.label || section.id || `Section ${sectionIndex + 1}`}
-                                    </div>
-                                </div>
-
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-                                        gap: "12px",
-                                        marginBottom: "16px",
-                                    }}
-                                >
-                                    <div style={fieldRowStyle}>
-                                        <span style={labelStyle}>Section ID</span>
-                                        <input
-                                            value={section.id || ""}
-                                            onChange={(e) => updateSectionId(sectionIndex, e.target.value)}
-                                            style={inputStyle}
-                                        />
-                                    </div>
-
-                                    <div style={fieldRowStyle}>
-                                        <span style={labelStyle}>Section Type</span>
-                                        <input
-                                            value={section.type || ""}
-                                            onChange={(e) => updateSectionType(sectionIndex, e.target.value)}
-                                            style={inputStyle}
-                                        />
-                                    </div>
-
-                                    <div style={fieldRowStyle}>
-                                        <span style={labelStyle}>Section Label</span>
-                                        <input
-                                            value={section.label || ""}
-                                            onChange={(e) => updateSectionLabel(sectionIndex, e.target.value)}
-                                            style={inputStyle}
-                                        />
+                                    <div>
+                                        <div style={{ fontSize: "28px", fontWeight: 800, color: "#111827" }}>
+                                            {section.label || section.id || `Section ${sectionIndex + 1}`}
+                                        </div>
+                                        <div style={{ color: "#6b7280", fontSize: "14px", marginTop: "4px" }}>
+                                            Bölüm içerikleri
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1122,6 +1029,6 @@ const AdminPanel = () => {
             </main>
         </div>
     );
-};
+}
 
 export default AdminPanel;
