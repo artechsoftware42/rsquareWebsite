@@ -1,19 +1,13 @@
-import './App.css'
-
-import Header from "./components/Header"
-import Home from './pages/Home'
+import "./App.css";
 import { LanguageProvider } from "./context/LanguageContext";
+import Pages from "./pages/Pages";
 
 function App() {
-
   return (
-    <>
-      <LanguageProvider>
-        <Header />
-        <Home />
-      </LanguageProvider>
-    </>
-  )
+    <LanguageProvider>
+      <Pages />
+    </LanguageProvider>
+  );
 }
 
-export default App
+export default App;

@@ -14,23 +14,17 @@ import adminAuthRoutes from "./routes/adminAuth.js";
 import adminAuthMiddleware from "./middleware/adminAuthMiddleware.js";
 import titleSettingsRoutes from "./routes/titleSettingsRoutes.js";
 import uploadRoutes from "./routes/upload.routes.js";
-
-import Page from "./models/Page.js"; // 🔥 EKLENDİ
+import Page from "./models/Page.js";
 
 const app = express();
 
 const uri = process.env.MONGO_URI;
-const isProduction = process.env.NODE_ENV === "production";
 
 app.set("trust proxy", 1);
 
 app.use(
     cors({
-        origin: [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://192.168.1.37:5173",
-        ],
+        origin: "http://localhost:5173",
         credentials: true,
     })
 );
@@ -50,8 +44,9 @@ app.use(
         }),
         cookie: {
             httpOnly: true,
-            secure: isProduction,
+            secure: false,
             sameSite: "lax",
+            maxAge: 1000 * 60 * 60 * 24,
         },
     })
 );
@@ -59,11 +54,6 @@ app.use(
 app.use("/api/mail", mailRoutes);
 app.use("/api/admin-auth", adminAuthRoutes);
 
-/* =========================
-   🔥 PAGES (TEK COLLECTION)
-========================= */
-
-// GET ALL PAGES
 app.get("/api/pages", async (req, res) => {
     try {
         const pages = await Page.find({}, { pageKey: 1, title: 1 });
@@ -74,7 +64,6 @@ app.get("/api/pages", async (req, res) => {
     }
 });
 
-// GET SINGLE PAGE
 app.get("/api/pages/:name", async (req, res) => {
     try {
         const page = await Page.findOne({ pageKey: req.params.name });
@@ -90,10 +79,9 @@ app.get("/api/pages/:name", async (req, res) => {
     }
 });
 
-// UPDATE PAGE
 app.put("/api/pages/:name", adminAuthMiddleware, async (req, res) => {
     try {
-        const { sections } = req.body;
+        const { sections, title } = req.body;
 
         if (!Array.isArray(sections)) {
             return res.status(400).json({ error: "sections array olmalı." });
@@ -101,7 +89,7 @@ app.put("/api/pages/:name", adminAuthMiddleware, async (req, res) => {
 
         const updated = await Page.findOneAndUpdate(
             { pageKey: req.params.name },
-            { $set: { sections } },
+            { $set: { sections, title } },
             { new: true, upsert: true }
         );
 
@@ -115,13 +103,9 @@ app.put("/api/pages/:name", adminAuthMiddleware, async (req, res) => {
     }
 });
 
-/* ========================= */
-
 app.use("/api", titleSettingsRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/images", express.static(path.join(process.cwd(), "public", "images")));
-
-/* ========================= */
 
 mongoose
     .connect(uri)

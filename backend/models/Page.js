@@ -26,7 +26,9 @@ const PageSchema = new mongoose.Schema(
         title: String,
         sections: { type: Array, default: [] },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+    }
 );
 
 export default mongoose.model("Page", PageSchema, "Home");

@@ -1,75 +1,103 @@
 import express from "express";
-import bcrypt from "bcryptjs";
-import AdminUser from "../models/AdminUser.js";
-import adminAuthMiddleware from "../middleware/adminAuthMiddleware.js";
-import { adminLoginLimiter } from "../middleware/adminRateLimit.js";
+import AdminAuth from "../models/AdminAuth.js";
 
 const router = express.Router();
 
-router.post("/login", adminLoginLimiter, async (req, res) => {
+router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
 
         if (!username || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Username and password are required.",
+                message: "Kullanıcı adı ve şifre zorunlu.",
             });
         }
 
-        const adminUser = await AdminUser.findOne({ username });
+        const adminDoc = await AdminAuth.findOne({
+            key: "adminLogin",
+            isActive: true,
+        }).lean();
 
-        if (!adminUser) {
+        if (!adminDoc) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin giriş verisi bulunamadı.",
+            });
+        }
+
+        const isMatch =
+            username.trim() === String(adminDoc.username).trim() &&
+            password === String(adminDoc.password);
+
+        if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid credentials.",
+                message: "Kullanıcı adı veya şifre hatalı.",
             });
         }
-
-        const isPasswordValid = await bcrypt.compare(password, adminUser.passwordHash);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid credentials.",
-            });
-        }
-
-        adminUser.lastLoginAt = new Date();
-        await adminUser.save();
 
         req.session.admin = {
-            userId: adminUser._id.toString(),
-            username: adminUser.username,
+            username: adminDoc.username,
+            isAuthenticated: true,
         };
 
-        return res.status(200).json({
-            success: true,
-            message: "Login successful.",
+        req.session.save((err) => {
+            if (err) {
+                console.error("Session save error:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: "Session kaydedilemedi.",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Login successful.",
+                admin: {
+                    username: adminDoc.username,
+                },
+            });
         });
     } catch (error) {
         console.error("Admin login error:", error);
         return res.status(500).json({
             success: false,
-            message: "Server error during login.",
+            message: "Sunucu hatası.",
         });
     }
 });
 
-router.get("/me", adminAuthMiddleware, async (req, res) => {
-    return res.status(200).json({
-        success: true,
-        admin: req.session.admin,
-    });
+router.get("/me", (req, res) => {
+    try {
+        if (!req.session?.admin?.isAuthenticated) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            admin: {
+                username: req.session.admin.username,
+            },
+        });
+    } catch (error) {
+        console.error("Admin me error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Sunucu hatası.",
+        });
+    }
 });
 
-router.post("/logout", adminAuthMiddleware, (req, res) => {
+router.post("/logout", (req, res) => {
     req.session.destroy((err) => {
         if (err) {
-            console.error("Logout error:", err);
             return res.status(500).json({
                 success: false,
-                message: "Logout failed.",
+                message: "Çıkış yapılırken hata oluştu.",
             });
         }
 
@@ -77,7 +105,7 @@ router.post("/logout", adminAuthMiddleware, (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Logged out successfully.",
+            message: "Çıkış başarılı.",
         });
     });
 });
