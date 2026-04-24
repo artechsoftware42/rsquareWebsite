@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import AdminLogin from "./AdminLogin";
 import AdminPanel from "./AdminPanel";
 import AdminProtectedRoute from "../routes/AdminProtectedRoute";
+import Footer from "../components/Footer";
 
 function Pages() {
   const location = useLocation();
@@ -27,6 +28,7 @@ function Pages() {
           }
         />
       </Routes>
+      <Footer />
     </>
   );
 }

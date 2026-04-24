@@ -6,19 +6,18 @@ import Games from "../components/Games";
 import Footer from "../components/Footer";
 import Partners from "../components/Partners";
 import Publish from "../components/Publish";
+import ScrollToTop from "../components/ScrollToTop";
 
 function Home() {
   return (
-    <>
+    <div>
       <Hero />
       <About />
-      <Contact />
-      <Career />
       <Games />
-      <Partners />
       <Publish />
-      <Footer />
-    </>
+      <Career />
+      <Partners />
+    </div>
   );
 }
 
