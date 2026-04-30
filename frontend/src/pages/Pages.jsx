@@ -5,6 +5,13 @@ import AdminLogin from "./AdminLogin";
 import AdminPanel from "./AdminPanel";
 import AdminProtectedRoute from "../routes/AdminProtectedRoute";
 import Footer from "../components/Footer";
+import AboutPage from "./AboutPage";
+import GamesPage from "./GamesPage";
+import ContactPage from "./ContactPage";
+import CareerPage from "./CareerPage";
+import ShareYourGame from "./ShareYourGame";
+import PrivacyPolicy from "./PrivacyPolicy";
+import GameDetailPage from "./GameDetailPage";
 
 function Pages() {
   const location = useLocation();
@@ -27,6 +34,13 @@ function Pages() {
             </AdminProtectedRoute>
           }
         />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/games" element={<GamesPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/career" element={<CareerPage />} />
+        <Route path="/share-your-game" element={<ShareYourGame />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/games/:slug" element={<GameDetailPage />} />
       </Routes>
       <Footer />
     </>

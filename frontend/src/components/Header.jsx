@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   FiMenu,
   FiX,
   FiArrowUpRight,
+  FiSend,
   FiChevronDown,
   FiGlobe,
 } from "react-icons/fi";
 import { useLanguage } from "../context/LanguageContext";
+
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const getLocalizedValue = (value, language, fallback = "") => {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -30,134 +33,76 @@ const buildImageUrl = (value) => {
   return "";
 };
 
-const normalizeLanguages = (items, language) => {
-  if (!Array.isArray(items)) return [];
-
-  return items.map((item, index) => ({
-    id: item.id ?? item._id ?? `lang-${index}`,
-    code: (item.code || item.short || "").toLowerCase(),
-    short: item.short || item.code?.toUpperCase() || "",
-    label: getLocalizedValue(item.label, language, item.short || item.code || ""),
-    flag: buildImageUrl(item.flag),
-  }));
-};
-
-const normalizeNavItems = (items, language) => {
-  if (!Array.isArray(items)) return [];
-
-  return items.map((item, index) => ({
-    id: item.id ?? item._id ?? `nav-${index}`,
-    href: item.href || item.link || "#",
-    text: getLocalizedValue(item.text ?? item.title, language, ""),
-  }));
-};
-
-const normalizeActionItems = (items, language) => {
-  if (!Array.isArray(items)) return [];
-
-  return items.map((item, index) => ({
-    id: item.id ?? item._id ?? `action-${index}`,
-    href: item.href || item.link || "#",
-    text: getLocalizedValue(item.text ?? item.title, language, ""),
-  }));
-};
-
-const findSection = (sections, idOrName) => {
-  return sections.find(
-    (section) =>
-      section?.id === idOrName ||
-      section?.name?.toLowerCase() === idOrName.toLowerCase()
-  );
+const findSection = (sections, sectionId) => {
+  return sections.find((section) => section?.id === sectionId);
 };
 
 const findFieldValue = (section, fieldId) => {
-  if (!section) return null;
+  if (!section || !Array.isArray(section.fields)) return null;
 
-  if (Array.isArray(section.fields)) {
-    return section.fields.find((field) => field.id === fieldId)?.value ?? null;
-  }
+  return section.fields.find((field) => field.id === fieldId)?.value ?? null;
+};
 
-  if (Array.isArray(section.contents)) {
-    return section.contents.find((content) => content.key === fieldId)?.value ?? null;
-  }
+const getActionIcon = (icon) => {
+  if (icon === "send") return <FiSend className="text-[17px]" />;
 
-  return null;
+  return <FiArrowUpRight className="text-[17px]" />;
 };
 
 export default function Header() {
   const { language, changeLanguage } = useLanguage();
 
+  const [pageData, setPageData] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [desktopLangOpen, setDesktopLangOpen] = useState(false);
-  const [mobileLangOpen, setMobileLangOpen] = useState(true);
+  const [langOpen, setLangOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [mobileGamesOpen, setMobileGamesOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  const [navItems, setNavItems] = useState([]);
-  const [actionItems, setActionItems] = useState([]);
-  const [languages, setLanguages] = useState([]);
-  const [logo, setLogo] = useState(null);
-
-  const desktopLangRef = useRef(null);
-  const mobileLangRef = useRef(null);
-
-  const closeMenus = () => {
-    setMenuOpen(false);
-    setDesktopLangOpen(false);
-  };
+  const location = useLocation();
+  const langRef = useRef(null);
+  const gamesRef = useRef(null);
 
   useEffect(() => {
     const fetchHeader = async () => {
       try {
-        const API = import.meta.env.VITE_API_URL;
-        const res = await fetch(`${API}/api/pages/Header`);
+        const res = await fetch(`${API_BASE}/api/pages/Header`);
         const data = await res.json();
 
         if (!res.ok || !data) {
-          throw new Error(data?.error || "Header verisi alınamadı");
+          throw new Error(data?.error || "Header verisi alınamadı.");
         }
 
-        const sections = Array.isArray(data.sections) ? data.sections : [];
-
-        const brandingSection =
-          findSection(sections, "branding") || findSection(sections, "header");
-        const navigationSection = findSection(sections, "navigation");
-        const actionsSection = findSection(sections, "actions");
-        const languageSection = findSection(sections, "languages");
-
-        const logoValue =
-          findFieldValue(brandingSection, "logo") ||
-          findFieldValue(brandingSection, "logoImage");
-
-        const navValue =
-          findFieldValue(navigationSection, "navLinks") ||
-          findFieldValue(navigationSection, "menuItems") ||
-          [];
-
-        const actionValue =
-          findFieldValue(actionsSection, "actions") ||
-          findFieldValue(actionsSection, "actionItems") ||
-          findFieldValue(actionsSection, "supportButton") ||
-          [];
-
-        const languageValue =
-          findFieldValue(languageSection, "languages") ||
-          findFieldValue(brandingSection, "languages") ||
-          [];
-
-        setLogo(logoValue);
-        setNavItems(navValue);
-        setActionItems(Array.isArray(actionValue) ? actionValue : [actionValue]);
-        setLanguages(languageValue);
+        setPageData(data);
       } catch (error) {
-        console.error("Header fetch error:", error);
-        setLogo(null);
-        setNavItems([]);
-        setActionItems([]);
-        setLanguages([]);
+        console.error("Header data error:", error);
+        setPageData(null);
       }
     };
 
     fetchHeader();
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setLangOpen(false);
+    setGamesOpen(false);
+    setMobileGamesOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (langRef.current && !langRef.current.contains(e.target)) {
+        setLangOpen(false);
+      }
+
+      if (gamesRef.current && !gamesRef.current.contains(e.target)) {
+        setGamesOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -167,73 +112,169 @@ export default function Header() {
 
     handleScroll();
     window.addEventListener("scroll", handleScroll);
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (desktopLangRef.current && !desktopLangRef.current.contains(e.target)) {
-        setDesktopLangOpen(false);
-      }
+  const content = useMemo(() => {
+    const sections = Array.isArray(pageData?.sections) ? pageData.sections : [];
 
-      if (mobileLangRef.current && !mobileLangRef.current.contains(e.target)) {
-        setMobileLangOpen(false);
-      }
+    const brandingSection = findSection(sections, "branding");
+    const navigationSection = findSection(sections, "navigation");
+    const gamesDropdownSection = findSection(sections, "gamesDropdown");
+    const actionsSection = findSection(sections, "actions");
+    const languagesSection = findSection(sections, "languages");
+    const mobileMenuSection = findSection(sections, "mobileMenu");
+
+    return {
+      branding: {
+        lightLogo: findFieldValue(brandingSection, "lightLogo"),
+        darkLogo: findFieldValue(brandingSection, "darkLogo"),
+      },
+      navigation: {
+        navLinks: findFieldValue(navigationSection, "navLinks") || [],
+      },
+      gamesDropdown: {
+        title: findFieldValue(gamesDropdownSection, "title"),
+        gameItems: findFieldValue(gamesDropdownSection, "gameItems") || [],
+      },
+      actions: {
+        items: findFieldValue(actionsSection, "items") || [],
+      },
+      languages: {
+        desktopTitle: findFieldValue(languagesSection, "desktopTitle"),
+        mobileTitle: findFieldValue(languagesSection, "mobileTitle"),
+        selectedText: findFieldValue(languagesSection, "selectedText"),
+        items: findFieldValue(languagesSection, "items") || [],
+      },
+      mobileMenu: {
+        navigationTitle: findFieldValue(mobileMenuSection, "navigationTitle"),
+        menuTitle: findFieldValue(mobileMenuSection, "menuTitle"),
+        quickAccessTitle: findFieldValue(mobileMenuSection, "quickAccessTitle"),
+      },
+    };
+  }, [pageData]);
+
+  const t = (value, fallback = "") => {
+    return getLocalizedValue(value, language, fallback);
+  };
+
+  const currentLogoValue = scrolled
+    ? content.branding.darkLogo
+    : content.branding.lightLogo;
+
+  const currentLogo = buildImageUrl(currentLogoValue);
+
+  const logoAlt =
+    currentLogoValue && typeof currentLogoValue === "object"
+      ? t(currentLogoValue.alt, "RSquare Studio Logo")
+      : "RSquare Studio Logo";
+
+  const selectedLanguage =
+    content.languages.items.find((item) => item.code === language) ||
+    content.languages.items[0] || {
+      code: language,
+      short: language?.toUpperCase?.() || "TR",
+      label: {
+        tr: "Türkçe",
+        en: "Turkish",
+        fr: "Turc",
+        ru: "Турецкий",
+      },
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const mobileMenuVariants = {
+    hidden: { opacity: 0, y: -14 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.28, ease: "easeOut", staggerChildren: 0.05 },
+    },
+    exit: {
+      opacity: 0,
+      y: -12,
+      transition: { duration: 0.2, ease: "easeInOut" },
+    },
+  };
 
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
+  const itemVariants = {
+    hidden: { opacity: 0, y: 8 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.24, ease: "easeOut" },
+    },
+  };
 
-  const normalizedNavItems = useMemo(() => {
-    return normalizeNavItems(navItems, language);
-  }, [navItems, language]);
+  const dropdownVariants = {
+    hidden: {
+      opacity: 0,
+      y: 14,
+      scale: 0.96,
+      filter: "blur(6px)",
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: "blur(0px)",
+      transition: {
+        duration: 0.24,
+        ease: "easeOut",
+        staggerChildren: 0.045,
+      },
+    },
+    exit: {
+      opacity: 0,
+      y: 10,
+      scale: 0.97,
+      filter: "blur(5px)",
+      transition: { duration: 0.18, ease: "easeInOut" },
+    },
+  };
 
-  const normalizedActionItems = useMemo(() => {
-    return normalizeActionItems(actionItems, language);
-  }, [actionItems, language]);
+  const dropdownItemVariants = {
+    hidden: { opacity: 0, x: -8 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.2, ease: "easeOut" },
+    },
+  };
 
-  const normalizedLanguages = useMemo(() => {
-    return normalizeLanguages(languages, language);
-  }, [languages, language]);
-
-  const selectedLanguage = useMemo(() => {
-    return (
-      normalizedLanguages.find((item) => item.code === language) ||
-      normalizedLanguages[0] || {
-        code: language,
-        short: language.toUpperCase(),
-        label: language.toUpperCase(),
-        flag: "",
-      }
-    );
-  }, [normalizedLanguages, language]);
-
-  const logoUrl = useMemo(() => buildImageUrl(logo), [logo]);
-  const logoAlt = useMemo(() => {
-    if (logo && typeof logo === "object") {
-      return getLocalizedValue(logo.alt, language, "Logo");
-    }
-    return "Logo";
-  }, [logo, language]);
+  const mobileGamesVariants = {
+    hidden: {
+      opacity: 0,
+      height: 0,
+      y: -8,
+    },
+    visible: {
+      opacity: 1,
+      height: "auto",
+      y: 0,
+      transition: {
+        duration: 0.26,
+        ease: "easeOut",
+        staggerChildren: 0.04,
+      },
+    },
+    exit: {
+      opacity: 0,
+      height: 0,
+      y: -8,
+      transition: { duration: 0.2, ease: "easeInOut" },
+    },
+  };
 
   const textColor = scrolled ? "text-[#231f20]" : "text-[#fff]";
+
   const linkBase = `group relative inline-flex items-center cursor-pointer text-[16px] xl:text-[17px] font-medium transition-all duration-300 ${textColor}`;
+
   const underline =
     "after:content-[''] after:absolute after:left-0 after:-bottom-1.5 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-[#c12030] after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100";
 
   const handleLanguageSelect = (langCode) => {
     changeLanguage(langCode);
-    setDesktopLangOpen(false);
-    setMobileLangOpen(true);
+    setLangOpen(false);
   };
 
   return (
@@ -245,12 +286,23 @@ export default function Header() {
     >
       <div className="mx-auto flex h-[80px] w-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="flex shrink-0 items-center">
-          <Link to="/" onClick={closeMenus} className="flex items-center cursor-pointer">
-            {logoUrl ? (
+          <Link to="/" className="hidden lg:flex items-center cursor-pointer">
+            {currentLogo ? (
               <img
-                src={logoUrl}
+                src={currentLogo}
                 alt={logoAlt}
-                className="h-[40px] sm:h-[46px] lg:h-[56px] xl:h-[64px] w-auto object-contain select-none"
+                className="h-[56px] xl:h-[64px] w-auto object-contain select-none transition-all duration-300"
+                draggable={false}
+              />
+            ) : null}
+          </Link>
+
+          <Link to="/" className="flex lg:hidden items-center cursor-pointer">
+            {currentLogo ? (
+              <img
+                src={currentLogo}
+                alt={logoAlt}
+                className="h-[40px] sm:h-[46px] w-auto object-contain select-none transition-all duration-300"
                 draggable={false}
               />
             ) : null}
@@ -258,47 +310,104 @@ export default function Header() {
         </div>
 
         <nav className="hidden xl:flex items-center gap-9 2xl:gap-11 absolute left-1/2 -translate-x-1/2">
-          {normalizedNavItems.map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.href}
-              onClick={closeMenus}
-              className={`${linkBase} ${underline}`}
-            >
-              {item.text}
-            </NavLink>
-          ))}
+          {content.navigation.navLinks.map((item) => {
+            if (item.hasDropdown) {
+              return (
+                <div
+                  key={item.id}
+                  ref={gamesRef}
+                  className="relative"
+                  onMouseEnter={() => setGamesOpen(true)}
+                  onMouseLeave={() => setGamesOpen(false)}
+                >
+                  <NavLink
+                    to={item.href}
+                    className={`${linkBase} ${underline} gap-1.5`}
+                  >
+                    <span>{t(item.text)}</span>
+                    <motion.span
+                      animate={{ rotate: gamesOpen ? 180 : 0 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="flex items-center justify-center"
+                    >
+                      <FiChevronDown className="text-[15px]" />
+                    </motion.span>
+                  </NavLink>
+
+                  <AnimatePresence>
+                    {gamesOpen && (
+                      <motion.div
+                        variants={dropdownVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className="absolute left-1/2 top-[calc(100%+18px)] w-[260px] -translate-x-1/2 overflow-hidden rounded-[24px] border border-white/40 bg-white/90 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.16)] backdrop-blur-2xl"
+                      >
+                        <div className="px-4 py-3 border-b border-black/5">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/40">
+                            {t(content.gamesDropdown.title, "Our Games")}
+                          </p>
+                        </div>
+
+                        <div className="pt-2">
+                          {content.gamesDropdown.gameItems.map((game) => (
+                            <motion.div
+                              key={game.id}
+                              variants={dropdownItemVariants}
+                            >
+                              <NavLink
+                                to={game.href}
+                                className="group flex items-center justify-between rounded-[18px] px-4 py-3 text-[14px] font-medium text-[#231f20] transition-all duration-300 hover:bg-[#231f20] hover:text-white"
+                              >
+                                <span>{t(game.text)}</span>
+                                <FiArrowUpRight className="text-[15px] opacity-0 transition-all duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px] group-hover:opacity-100" />
+                              </NavLink>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            }
+
+            return (
+              <NavLink
+                key={item.id}
+                to={item.href}
+                className={`${linkBase} ${underline}`}
+              >
+                {t(item.text)}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="hidden xl:flex items-center gap-6 2xl:gap-7">
-          {normalizedActionItems.map((item) => (
+          {content.actions.items.map((item) => (
             <NavLink
               key={item.id}
               to={item.href}
-              onClick={closeMenus}
               className={`${linkBase} gap-2 ${underline}`}
             >
-              <span>{item.text}</span>
+              <span>{t(item.text)}</span>
               <span className="transition-transform duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]">
-                <FiArrowUpRight className="text-[17px]" />
+                {getActionIcon(item.icon)}
               </span>
             </NavLink>
           ))}
 
-          <div
-            ref={desktopLangRef}
-            className="relative ml-1 cursor-pointer"
-            onMouseEnter={() => setDesktopLangOpen(true)}
-            onMouseLeave={() => setDesktopLangOpen(false)}
-          >
+          <div ref={langRef} className="relative ml-1 cursor-pointer">
             <button
               type="button"
+              onClick={() => setLangOpen((prev) => !prev)}
               className={`flex items-center gap-2 px-2 py-1 text-[15px] cursor-pointer transition-all duration-300 ${linkBase}`}
             >
               <FiGlobe className="text-[16px]" />
-              <span className="font-semibold">{selectedLanguage?.short}</span>
+              <span className="font-semibold">{selectedLanguage.short}</span>
               <motion.span
-                animate={{ rotate: desktopLangOpen ? 180 : 0 }}
+                animate={{ rotate: langOpen ? 180 : 0 }}
                 transition={{ duration: 0.2 }}
                 className="flex items-center justify-center"
               >
@@ -307,49 +416,39 @@ export default function Header() {
             </button>
 
             <AnimatePresence>
-              {desktopLangOpen && (
+              {langOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: 12, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.96 }}
                   transition={{ duration: 0.22, ease: "easeOut" }}
-                  className="absolute right-0 top-[calc(100%+14px)] min-w-[220px] overflow-hidden rounded-[22px] border border-white/40 bg-white/85 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-2xl"
+                  className="absolute right-0 top-[calc(100%+14px)] min-w-[180px] overflow-hidden rounded-[22px] border border-white/40 bg-white/85 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-2xl"
                 >
                   <div className="border-b border-black/5 px-4 py-3">
                     <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.22em] text-black/45">
                       <FiGlobe className="text-[13px]" />
-                      Language
+                      {t(content.languages.desktopTitle, "Language")}
                     </div>
                   </div>
 
                   <div className="p-2">
-                    {normalizedLanguages.map((lang) => {
-                      const isActive = selectedLanguage?.code === lang.code;
+                    {content.languages.items.map((lang) => {
+                      const isActiveLang = language === lang.code;
 
                       return (
                         <button
                           key={lang.id}
                           type="button"
                           onClick={() => handleLanguageSelect(lang.code)}
-                          className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-[14px] font-medium transition-all duration-200 ${isActive
+                          className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-[14px] font-medium transition-all duration-200 ${isActiveLang
                             ? "bg-[#231f20] text-white shadow-[0_10px_24px_rgba(35,31,32,0.18)]"
                             : "text-[#231f20] hover:bg-black/5"
                             }`}
                         >
-                          <div className="flex items-center gap-3">
-                            {lang.flag ? (
-                              <img
-                                src={lang.flag}
-                                alt={lang.label}
-                                className="w-7 h-5 object-cover rounded-[2px]"
-                              />
-                            ) : null}
-                            <span>{lang.label}</span>
-                          </div>
-
-                          {isActive && (
+                          <span>{lang.short}</span>
+                          {isActiveLang && (
                             <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
-                              Selected
+                              {t(content.languages.selectedText, "Selected")}
                             </span>
                           )}
                         </button>
@@ -388,73 +487,125 @@ export default function Header() {
       <AnimatePresence>
         {menuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            variants={mobileMenuVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className="xl:hidden"
           >
             <div className="mx-4 sm:mx-6 mt-1 overflow-hidden rounded-[28px] border border-white/10 bg-[#231f20] text-white shadow-[0_25px_70px_rgba(0,0,0,0.2)]">
               <div className="px-6 sm:px-7 py-7 sm:py-8">
                 <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45">
-                    Navigation
+                    {t(content.mobileMenu.navigationTitle, "Navigation")}
                   </span>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/35">
-                    Menu
+                    {t(content.mobileMenu.menuTitle, "Menu")}
                   </span>
                 </div>
 
                 <div className="flex flex-col gap-5">
-                  {normalizedNavItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.24, ease: "easeOut" }}
-                    >
-                      <NavLink
-                        to={item.href}
-                        onClick={closeMenus}
-                        className="group flex cursor-pointer items-center justify-between"
-                      >
-                        <span className="relative inline-block text-[22px] font-medium text-white">
-                          {item.text}
-                          <span className="absolute left-0 -bottom-1.5 h-[2px] w-full origin-left scale-x-0 bg-[#c12030] transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                        </span>
-                        <FiArrowUpRight className="text-white transition-transform duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]" />
-                      </NavLink>
-                    </motion.div>
-                  ))}
+                  {content.navigation.navLinks.map((item) => {
+                    if (item.hasDropdown) {
+                      return (
+                        <motion.div key={item.id} variants={itemVariants}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMobileGamesOpen((prev) => !prev)
+                            }
+                            className="group flex w-full cursor-pointer items-center justify-between"
+                          >
+                            <span className="relative inline-flex items-center gap-2 text-[22px] font-medium text-white">
+                              {t(item.text)}
+                              <motion.span
+                                animate={{
+                                  rotate: mobileGamesOpen ? 180 : 0,
+                                }}
+                                transition={{
+                                  duration: 0.22,
+                                  ease: "easeOut",
+                                }}
+                              >
+                                <FiChevronDown className="text-[18px]" />
+                              </motion.span>
+                              <span className="absolute left-0 -bottom-1.5 h-[2px] w-full origin-left scale-x-0 bg-[#c12030] transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                            </span>
+                            <FiArrowUpRight className="text-white transition-transform duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]" />
+                          </button>
+
+                          <AnimatePresence>
+                            {mobileGamesOpen && (
+                              <motion.div
+                                variants={mobileGamesVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="overflow-hidden"
+                              >
+                                <div className="mt-4 ml-3 rounded-[22px] border border-white/10 bg-white/[0.04] p-2">
+                                  {content.gamesDropdown.gameItems.map(
+                                    (game) => (
+                                      <motion.div
+                                        key={game.id}
+                                        variants={dropdownItemVariants}
+                                      >
+                                        <NavLink
+                                          to={game.href}
+                                          className="group flex items-center justify-between rounded-[16px] px-4 py-3 text-[15px] font-medium text-white/78 transition-all duration-300 hover:bg-white/8 hover:text-white"
+                                        >
+                                          <span>{t(game.text)}</span>
+                                          <FiArrowUpRight className="text-[15px] opacity-50 transition-transform duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px] group-hover:opacity-100" />
+                                        </NavLink>
+                                      </motion.div>
+                                    )
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    }
+
+                    return (
+                      <motion.div key={item.id} variants={itemVariants}>
+                        <NavLink
+                          to={item.href}
+                          className="group flex cursor-pointer items-center justify-between"
+                        >
+                          <span className="relative inline-block text-[22px] font-medium text-white">
+                            {t(item.text)}
+                            <span className="absolute left-0 -bottom-1.5 h-[2px] w-full origin-left scale-x-0 bg-[#c12030] transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                          </span>
+                          <FiArrowUpRight className="text-white transition-transform duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]" />
+                        </NavLink>
+                      </motion.div>
+                    );
+                  })}
                 </div>
 
                 <div className="my-7 h-px w-full bg-white/10" />
 
                 <div className="mb-4">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45">
-                    Quick Access
+                    {t(content.mobileMenu.quickAccessTitle, "Quick Access")}
                   </span>
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  {normalizedActionItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.24, ease: "easeOut" }}
-                    >
+                  {content.actions.items.map((item) => (
+                    <motion.div key={item.id} variants={itemVariants}>
                       <NavLink
                         to={item.href}
-                        onClick={closeMenus}
                         className="group flex cursor-pointer items-center justify-between"
                       >
                         <span className="relative inline-flex items-center gap-2 text-[17px] font-medium text-white">
-                          {item.text}
+                          {t(item.text)}
                           <span className="absolute left-0 -bottom-1.5 h-[2px] w-full origin-left scale-x-0 bg-[#c12030] transition-transform duration-300 ease-out group-hover:scale-x-100" />
                         </span>
                         <span className="text-white transition-transform duration-300 group-hover:translate-x-[2px] group-hover:-translate-y-[2px]">
-                          <FiArrowUpRight className="text-[17px]" />
+                          {getActionIcon(item.icon)}
                         </span>
                       </NavLink>
                     </motion.div>
@@ -463,68 +614,31 @@ export default function Header() {
 
                 <div className="my-7 h-px w-full bg-white/10" />
 
-                <motion.div
-                  ref={mobileLangRef}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.24, ease: "easeOut" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setMobileLangOpen((prev) => !prev)}
-                    className="mb-3 flex w-full items-center justify-between gap-2 text-sm font-semibold text-white"
-                  >
-                    <span className="flex items-center gap-2">
-                      <FiGlobe />
-                      <span>Language</span>
-                    </span>
-                    <FiChevronDown
-                      className={`transition-transform duration-300 ${mobileLangOpen ? "rotate-180" : ""
-                        }`}
-                    />
-                  </button>
+                <motion.div variants={itemVariants}>
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                    <FiGlobe />
+                    <span>{t(content.languages.mobileTitle, "Language")}</span>
+                  </div>
 
-                  <AnimatePresence initial={false}>
-                    {mobileLangOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex flex-col gap-3 pt-1">
-                          {normalizedLanguages.map((lang) => {
-                            const isActive = selectedLanguage?.code === lang.code;
+                  <div className="flex flex-wrap items-center gap-3">
+                    {content.languages.items.map((lang) => {
+                      const isActiveLang = language === lang.code;
 
-                            return (
-                              <button
-                                key={lang.id}
-                                type="button"
-                                onClick={() => handleLanguageSelect(lang.code)}
-                                className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold tracking-wide transition-all duration-300 ${isActive
-                                  ? "border-[#c12030] bg-[#c12030] text-white"
-                                  : "border-white/15 bg-white/5 text-white hover:border-[#c12030]"
-                                  }`}
-                              >
-                                <span className="flex items-center gap-3">
-                                  {lang.flag ? (
-                                    <img
-                                      src={lang.flag}
-                                      alt={lang.label}
-                                      className="w-7 h-5 object-cover rounded-[2px]"
-                                    />
-                                  ) : null}
-                                  <span>{lang.label}</span>
-                                </span>
-                                <span>{lang.short}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      return (
+                        <button
+                          key={lang.id}
+                          type="button"
+                          onClick={() => changeLanguage(lang.code)}
+                          className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold tracking-wide transition-all duration-300 ${isActiveLang
+                            ? "border-[#c12030] bg-[#c12030] text-white"
+                            : "border-white/15 bg-white/5 text-white hover:border-[#c12030]"
+                            }`}
+                        >
+                          {lang.short}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </motion.div>
               </div>
             </div>
