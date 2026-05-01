@@ -133,46 +133,14 @@ const mapMasterGamesToGamesPageItems = (masterGames) => {
             stores: (game.platforms || []).map((platform) => {
                 const key = platform.key || platform.id;
 
-                if (key === "steam") {
-                    return {
-                        id: "steam",
-                        name: "Steam",
-                        icon: "steam",
-                        href: platform.href || "#",
-                    };
-                }
-
-                if (key === "epic") {
-                    return {
-                        id: "epic-games",
-                        name: "Epic Games",
-                        icon: "epicGames",
-                        href: platform.href || "#",
-                    };
-                }
-
-                if (key === "googleplay") {
-                    return {
-                        id: "google-play",
-                        name: "Google Play",
-                        icon: "googlePlay",
-                        href: platform.href || "#",
-                    };
-                }
-
-                if (key === "appstore") {
-                    return {
-                        id: "app-store",
-                        name: "App Store",
-                        icon: "appStore",
-                        href: platform.href || "#",
-                    };
-                }
-
                 return {
-                    id: key || `store-${Date.now()}`,
+                    id: platform.id || key || `store-${Date.now()}`,
+                    key: key || "",
                     name: platform.name || key || "Store",
-                    icon: key || "",
+                    icon: platform.icon || {
+                        url: "",
+                        alt: emptyLocalizedValue(),
+                    },
                     href: platform.href || "#",
                 };
             }),
@@ -215,41 +183,14 @@ const mapMasterGamesToGamesItems = (masterGames) => {
             stores: (game.platforms || []).map((platform) => {
                 const key = platform.key || platform.id;
 
-                if (key === "steam") {
-                    return {
-                        id: "steam",
-                        name: "Steam",
-                        href: platform.href || "#",
-                    };
-                }
-
-                if (key === "epic") {
-                    return {
-                        id: "epic-games",
-                        name: "Epic Games",
-                        href: platform.href || "#",
-                    };
-                }
-
-                if (key === "googleplay") {
-                    return {
-                        id: "google-play",
-                        name: "Google Play",
-                        href: platform.href || "#",
-                    };
-                }
-
-                if (key === "appstore") {
-                    return {
-                        id: "app-store",
-                        name: "App Store",
-                        href: platform.href || "#",
-                    };
-                }
-
                 return {
-                    id: key || `store-${Date.now()}`,
+                    id: platform.id || key || `store-${Date.now()}`,
+                    key: key || "",
                     name: platform.name || key || "Store",
+                    icon: platform.icon || {
+                        url: "",
+                        alt: emptyLocalizedValue(),
+                    },
                     href: platform.href || "#",
                 };
             }),
@@ -513,6 +454,16 @@ const removeByPath = (obj, path) => {
     return cloned;
 };
 
+const getByPath = (obj, path = []) => {
+    let current = obj;
+
+    for (let i = 0; i < path.length; i += 1) {
+        current = current?.[path[i]];
+    }
+
+    return current;
+};
+
 const isPlainObject = (value) =>
     value && typeof value === "object" && !Array.isArray(value);
 
@@ -732,7 +683,23 @@ function AdminPanel() {
     const handleAddListItem = (sectionIndex, fieldIndex, path = []) => {
         const field = selectedPageData.sections[sectionIndex].fields[fieldIndex];
         const currentValue = field.value;
-        let newItem = createNewListItem(field);
+
+        const targetArray = path.length
+            ? getByPath(currentValue, path)
+            : currentValue;
+
+        const firstItem = Array.isArray(targetArray) ? targetArray[0] : null;
+
+        let newItem = firstItem
+            ? normalizeItemByShape(firstItem)
+            : createNewListItem({
+                ...field,
+                value: targetArray,
+            });
+
+        if (!newItem.id && isPlainObject(newItem)) {
+            newItem.id = `item-${Date.now()}`;
+        }
 
         const isMasterGamesItems =
             selectedPageData?.pageKey === MASTER_GAMES_PAGE_KEY &&
@@ -753,17 +720,16 @@ function AdminPanel() {
         }
 
         if (!path.length) {
-            const next = Array.isArray(currentValue) ? [...currentValue, newItem] : [newItem];
+            const next = Array.isArray(currentValue)
+                ? [...currentValue, newItem]
+                : [newItem];
+
             updateFieldValue(sectionIndex, fieldIndex, next);
             return;
         }
 
         const updatedValue = deepClone(currentValue);
-        let current = updatedValue;
-
-        for (let i = 0; i < path.length; i += 1) {
-            current = current[path[i]];
-        }
+        const current = getByPath(updatedValue, path);
 
         if (Array.isArray(current)) {
             current.push(newItem);
