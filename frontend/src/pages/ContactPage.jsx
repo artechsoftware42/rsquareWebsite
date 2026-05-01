@@ -9,6 +9,8 @@ import {
 import { FaCheck } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
+import { sendContactMail } from "../services/formMailService";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -19,6 +21,9 @@ function ContactPage() {
   const [subjectOpen, setSubjectOpen] = useState(false);
   const [agreementChecked, setAgreementChecked] = useState(false);
   const [errors, setErrors] = useState({});
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [sending, setSending] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -31,8 +36,8 @@ function ContactPage() {
   useEffect(() => {
     const fetchContactPage = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/ContactPage`);
-        const data = await res.json();
+        const data = await fetchJson(`${API_BASE}/api/pages/ContactPage`);
+        if (!data) return;
         setPageData(data);
       } catch (error) {
         console.error("ContactPage data error:", error);
@@ -41,6 +46,16 @@ function ContactPage() {
 
     fetchContactPage();
   }, []);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   const content = useMemo(() => {
     const sections = pageData?.sections || [];
@@ -86,36 +101,88 @@ function ContactPage() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = getLocalized(content.firstName.requiredMessage, "This field is required.");
+      newErrors.firstName = getLocalized(
+        content.firstName.requiredMessage,
+        "This field is required."
+      );
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = getLocalized(content.lastName.requiredMessage, "This field is required.");
+      newErrors.lastName = getLocalized(
+        content.lastName.requiredMessage,
+        "This field is required."
+      );
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = getLocalized(content.email.requiredMessage, "This field is required.");
+      newErrors.email = getLocalized(
+        content.email.requiredMessage,
+        "This field is required."
+      );
     }
 
     if (!formData.subjectType) {
-      newErrors.subjectType = getLocalized(content.subjectType.requiredMessage, "Please select a subject type.");
+      newErrors.subjectType = getLocalized(
+        content.subjectType.requiredMessage,
+        "Please select a subject type."
+      );
     }
 
     if (!formData.message.trim()) {
-      newErrors.message = getLocalized(content.message.requiredMessage, "This field is required.");
+      newErrors.message = getLocalized(
+        content.message.requiredMessage,
+        "This field is required."
+      );
     }
 
     setErrors(newErrors);
+    setSubmitStatus(null);
 
     if (Object.keys(newErrors).length > 0) return;
 
-    console.log("Message submitted:", formData);
+    try {
+      setSending(true);
+
+      await sendContactMail(formData);
+
+      setSubmitStatus({
+        type: "success",
+        text: "Mesajınız başarıyla gönderildi.",
+      });
+
+      setCooldownSeconds(300);
+
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        subjectType: "",
+        message: "",
+      });
+
+      setAgreementChecked(false);
+    } catch (error) {
+      console.error(error);
+
+      if (error.remainingSeconds) {
+        setCooldownSeconds(error.remainingSeconds);
+      }
+
+      setSubmitStatus({
+        type: "error",
+        text:
+          error.message ||
+          "Mesaj gönderilemedi. Lütfen daha sonra tekrar deneyin.",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   const getInfoIcon = (icon) => {
@@ -327,17 +394,32 @@ function ContactPage() {
                 </span>
               </label>
 
+              {submitStatus && (
+                <div
+                  className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-medium ${submitStatus.type === "success"
+                    ? "border-green-500/30 bg-green-500/10 text-green-300"
+                    : "border-red-500/30 bg-red-500/10 text-red-300"
+                    }`}
+                >
+                  {submitStatus.text}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={!agreementChecked}
-                className={`group inline-flex items-center justify-center gap-3 rounded-full px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] transition-all duration-300 ${agreementChecked
+                disabled={!agreementChecked || sending || cooldownSeconds > 0}
+                className={`group inline-flex items-center justify-center gap-3 rounded-full px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] transition-all duration-300 ${agreementChecked && !sending && cooldownSeconds <= 0
                   ? "cursor-pointer bg-white text-[#0d0d0d] hover:scale-[1.02]"
                   : "cursor-not-allowed bg-white/15 text-white/35"
                   }`}
               >
-                {getLocalized(content.submitButton.text)}
+                {cooldownSeconds > 0
+                  ? `${cooldownSeconds} sn bekleyin`
+                  : sending
+                    ? "Gönderiliyor..."
+                    : getLocalized(content.submitButton.text)}
                 <FiArrowUpRight
-                  className={`transition-transform duration-300 ${agreementChecked
+                  className={`transition-transform duration-300 ${agreementChecked && !sending && cooldownSeconds <= 0
                     ? "group-hover:translate-x-[2px] group-hover:-translate-y-[2px]"
                     : ""
                     }`}

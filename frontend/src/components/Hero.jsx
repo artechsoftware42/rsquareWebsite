@@ -3,6 +3,7 @@ import { FaSteam, FaPause, FaPlay } from "react-icons/fa";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -63,12 +64,8 @@ export default function Hero() {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/Hero`);
-        const data = await res.json();
-
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "Hero verisi alınamadı.");
-        }
+        const data = await fetchJson(`${API_BASE}/api/pages/Hero`);
+        if (!data) return;
 
         setPageData(data);
       } catch (error) {
@@ -114,10 +111,6 @@ export default function Hero() {
       setProgress((prev) => {
         const next = prev + 100 / (slideDuration / 100);
 
-        if (next >= 100) {
-          setCurrentSlide((s) => (s + 1) % slides.length);
-          return 0;
-        }
 
         return next;
       });
@@ -125,16 +118,6 @@ export default function Hero() {
 
     return () => clearInterval(interval);
   }, [isPaused, currentSlide, slideDuration, slides.length]);
-
-  useEffect(() => {
-    setProgress(0);
-  }, [currentSlide]);
-
-  useEffect(() => {
-    if (currentSlide > slides.length - 1) {
-      setCurrentSlide(0);
-    }
-  }, [currentSlide, slides.length]);
 
   const activeSlide = slides[currentSlide];
 

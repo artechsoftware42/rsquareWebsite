@@ -5,6 +5,7 @@ import { FiArrowUpRight } from "react-icons/fi";
 import { FaLinkedinIn, FaInstagram } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -63,12 +64,8 @@ function Footer() {
     useEffect(() => {
         const fetchFooter = async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/pages/Footer`);
-                const data = await res.json();
-
-                if (!res.ok || !data) {
-                    throw new Error(data?.error || "Footer verisi alınamadı.");
-                }
+                const data = await fetchJson(`${API_BASE}/api/pages/Footer`);
+                if (!data) return;
 
                 setPageData(data);
             } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -11,8 +12,8 @@ function Partners() {
     useEffect(() => {
         const fetchPartners = async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/pages/Partners`);
-                const data = await res.json();
+                const data = await fetchJson(`${API_BASE}/api/pages/Partners`);
+                if (!data) return;
                 setPageData(data);
             } catch (error) {
                 console.error("Partners data error:", error);

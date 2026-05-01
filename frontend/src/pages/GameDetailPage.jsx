@@ -5,6 +5,7 @@ import { SiEpicgames } from "react-icons/si";
 import { BsArrowLeft, BsArrowRight } from "react-icons/bs";
 import { IoClose } from "react-icons/io5";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -98,12 +99,8 @@ const GameDetailPage = () => {
   useEffect(() => {
     const fetchGameDetails = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/GameDetails`);
-        const data = await res.json();
-
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "GameDetails verisi alınamadı.");
-        }
+        const data = await fetchJson(`${API_BASE}/api/pages/GameDetails`);
+        if (!data) return;
 
         setPageData(data);
       } catch (error) {

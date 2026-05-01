@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -29,12 +30,8 @@ function About() {
   useEffect(() => {
     const fetchAbout = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/About`);
-        const data = await res.json();
-
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "About verisi alınamadı.");
-        }
+        const data = await fetchJson(`${API_BASE}/api/pages/About`);
+        if (!data) return;
 
         setPageData(data);
       } catch (error) {

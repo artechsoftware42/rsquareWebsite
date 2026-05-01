@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FiArrowUpRight } from "react-icons/fi";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -12,8 +13,8 @@ function Contact() {
     useEffect(() => {
         const fetchContact = async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/pages/Contact`);
-                const data = await res.json();
+                const data = await fetchJson(`${API_BASE}/api/pages/About`);
+                if (!data) return;
                 setPageData(data);
             } catch (error) {
                 console.error("Contact data error:", error);

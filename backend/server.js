@@ -9,12 +9,13 @@ import MongoStore from "connect-mongo";
 import cookieParser from "cookie-parser";
 import path from "path";
 
-import mailRoutes from "./routes/mail.js";
 import adminAuthRoutes from "./routes/adminAuth.js";
 import adminAuthMiddleware from "./middleware/adminAuthMiddleware.js";
 import titleSettingsRoutes from "./routes/titleSettingsRoutes.js";
 import uploadRoutes from "./routes/upload.routes.js";
 import Page from "./models/Page.js";
+
+import formMailRoutes from "./routes/formMail.routes.js";
 
 const app = express();
 
@@ -56,7 +57,7 @@ app.use(
     })
 );
 
-app.use("/api/mail", mailRoutes);
+app.use("/api/form-mail", formMailRoutes);
 app.use("/api/admin-auth", adminAuthRoutes);
 
 app.get("/api/pages", async (req, res) => {

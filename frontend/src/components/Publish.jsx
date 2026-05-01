@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FiArrowUpRight } from "react-icons/fi";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -13,8 +14,8 @@ function Publish() {
     useEffect(() => {
         const fetchPublish = async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/pages/Publish`);
-                const data = await res.json();
+                const data = await fetchJson(`${API_BASE}/api/pages/Publish`);
+                if (!data) return;
                 setPageData(data);
             } catch (error) {
                 console.error("Publish data error:", error);

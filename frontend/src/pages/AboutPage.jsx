@@ -5,6 +5,7 @@ import { TbRocket } from "react-icons/tb";
 import { FaSteam, FaGooglePlay, FaApple } from "react-icons/fa";
 import { SiEpicgames } from "react-icons/si";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -15,8 +16,9 @@ function AboutPage() {
   useEffect(() => {
     const fetchAboutPage = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/AboutPage`);
-        const data = await res.json();
+        const data = await fetchJson(`${API_BASE}/api/pages/AboutPage`);
+        if (!data) return;
+
         setPageData(data);
       } catch (error) {
         console.error("AboutPage data error:", error);

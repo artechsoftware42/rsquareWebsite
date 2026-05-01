@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -29,12 +30,8 @@ function PrivacyPolicy() {
   useEffect(() => {
     const fetchPrivacyPolicy = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/PrivacyPolicy`);
-        const data = await res.json();
-
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "PrivacyPolicy verisi alınamadı.");
-        }
+        const data = await fetchJson(`${API_BASE}/api/pages/PrivacyPolicy`);
+        if (!data) return;
 
         setPageData(data);
       } catch (error) {

@@ -4,6 +4,8 @@ import { FiArrowUpRight, FiUploadCloud, FiChevronDown } from "react-icons/fi";
 import { FaCheck } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
+import { sendCareerMail } from "../services/formMailService";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -33,6 +35,9 @@ function CareerPage() {
   const [cvName, setCvName] = useState("");
   const [roleOpen, setRoleOpen] = useState(false);
   const [errors, setErrors] = useState({});
+  const [sending, setSending] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -48,12 +53,8 @@ function CareerPage() {
   useEffect(() => {
     const fetchCareerPage = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/CareerPage`);
-        const data = await res.json();
-
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "CareerPage verisi alınamadı.");
-        }
+        const data = await fetchJson(`${API_BASE}/api/pages/CareerPage`);
+        if (!data) return;
 
         setPageData(data);
       } catch (error) {
@@ -64,6 +65,16 @@ function CareerPage() {
 
     fetchCareerPage();
   }, []);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   const content = useMemo(() => {
     const sections = Array.isArray(pageData?.sections) ? pageData.sections : [];
@@ -127,7 +138,7 @@ function CareerPage() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -182,14 +193,58 @@ function CareerPage() {
     }
 
     if (!formData.cv) {
-      newErrors.cv = t(content.form.cv.requiredMessage, "Please upload your CV.");
+      newErrors.cv = t(
+        content.form.cv.requiredMessage,
+        "Please upload your CV."
+      );
     }
 
     setErrors(newErrors);
+    setSubmitStatus(null);
 
     if (Object.keys(newErrors).length > 0) return;
 
-    console.log("Application submitted:", formData);
+    try {
+      setSending(true);
+
+      await sendCareerMail(formData);
+
+      setSubmitStatus({
+        type: "success",
+        text: "Başvurunuz başarıyla gönderildi.",
+      });
+
+      setCooldownSeconds(300);
+
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        role: "",
+        portfolio: "",
+        coverLetter: "",
+        cv: null,
+      });
+
+      setCvName("");
+      setAgreementChecked(false);
+    } catch (error) {
+      console.error(error);
+
+      if (error.remainingSeconds) {
+        setCooldownSeconds(error.remainingSeconds);
+      }
+
+      setSubmitStatus({
+        type: "error",
+        text:
+          error.message ||
+          "Başvuru gönderilemedi. Lütfen daha sonra tekrar deneyin.",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -484,17 +539,33 @@ function CareerPage() {
                 </span>
               </label>
 
+              {submitStatus && (
+                <div
+                  className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-medium ${submitStatus.type === "success"
+                    ? "border-green-500/30 bg-green-500/10 text-green-300"
+                    : "border-red-500/30 bg-red-500/10 text-red-300"
+                    }`}
+                >
+                  {submitStatus.text}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={!agreementChecked}
-                className={`group inline-flex items-center justify-center gap-3 rounded-full px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] transition-all duration-300 ${agreementChecked
+                disabled={!agreementChecked || sending || cooldownSeconds > 0}
+                className={`group inline-flex items-center justify-center gap-3 rounded-full px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] transition-all duration-300 ${agreementChecked && !sending && cooldownSeconds <= 0
                   ? "cursor-pointer bg-white text-[#0d0d0d] hover:scale-[1.02]"
                   : "cursor-not-allowed bg-white/15 text-white/35"
                   }`}
               >
-                {t(content.form.submitButton.text, "Send Application")}
+                {cooldownSeconds > 0
+                  ? `${cooldownSeconds} sn bekleyin`
+                  : sending
+                    ? "Gönderiliyor..."
+                    : t(content.form.submitButton.text, "Send Application")}
+
                 <FiArrowUpRight
-                  className={`transition-transform duration-300 ${agreementChecked
+                  className={`transition-transform duration-300 ${agreementChecked && !sending && cooldownSeconds <= 0
                     ? "group-hover:translate-x-[2px] group-hover:-translate-y-[2px]"
                     : ""
                     }`}

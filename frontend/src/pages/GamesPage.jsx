@@ -11,6 +11,7 @@ import { FiArrowUpRight } from "react-icons/fi";
 import { FaSteam, FaGooglePlay, FaAppStoreIos } from "react-icons/fa";
 import { SiEpicgames } from "react-icons/si";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -74,12 +75,8 @@ function GamesPage() {
   useEffect(() => {
     const fetchGamesPage = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/pages/GamesPage`);
-        const data = await res.json();
-
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "GamesPage verisi alınamadı.");
-        }
+        const data = await fetchJson(`${API_BASE}/api/pages/GamesPage`);
+        if (!data) return;
 
         setPageData(data);
       } catch (error) {

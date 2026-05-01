@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { NavLink, Link, useLocation } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import {
   FiMenu,
   FiX,
@@ -10,6 +10,7 @@ import {
   FiGlobe,
 } from "react-icons/fi";
 import { useLanguage } from "../context/LanguageContext";
+import { fetchJson } from "../utils/fetchJson";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -57,38 +58,24 @@ export default function Header() {
   const [langOpen, setLangOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [mobileGamesOpen, setMobileGamesOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.scrollY > 40;
+  });
 
-  const location = useLocation();
   const langRef = useRef(null);
   const gamesRef = useRef(null);
 
   useEffect(() => {
     const fetchHeader = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/pages/Header`);
-        const data = await res.json();
+      const data = await fetchJson(`${API_BASE}/api/pages/Header`);
+      if (!data) return;
 
-        if (!res.ok || !data) {
-          throw new Error(data?.error || "Header verisi alınamadı.");
-        }
-
-        setPageData(data);
-      } catch (error) {
-        console.error("Header data error:", error);
-        setPageData(null);
-      }
+      setPageData(data);
     };
 
     fetchHeader();
   }, []);
-
-  useEffect(() => {
-    setMenuOpen(false);
-    setLangOpen(false);
-    setGamesOpen(false);
-    setMobileGamesOpen(false);
-  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -110,7 +97,6 @@ export default function Header() {
       setScrolled(window.scrollY > 40);
     };
 
-    handleScroll();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -156,6 +142,19 @@ export default function Header() {
 
   const t = (value, fallback = "") => {
     return getLocalizedValue(value, language, fallback);
+  };
+
+  const closeMenus = () => {
+    setMenuOpen(false);
+    setLangOpen(false);
+    setGamesOpen(false);
+    setMobileGamesOpen(false);
+  };
+
+  const handleLanguageSelect = (langCode) => {
+    changeLanguage(langCode);
+    setLangOpen(false);
+    setMenuOpen(false);
   };
 
   const currentLogoValue = scrolled
@@ -272,11 +271,6 @@ export default function Header() {
   const underline =
     "after:content-[''] after:absolute after:left-0 after:-bottom-1.5 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-[#c12030] after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100";
 
-  const handleLanguageSelect = (langCode) => {
-    changeLanguage(langCode);
-    setLangOpen(false);
-  };
-
   return (
     <header
       className={`fixed top-0 left-0 z-50 w-full transition-all duration-300 ${scrolled
@@ -286,7 +280,11 @@ export default function Header() {
     >
       <div className="mx-auto flex h-[80px] w-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="flex shrink-0 items-center">
-          <Link to="/" className="hidden lg:flex items-center cursor-pointer">
+          <Link
+            to="/"
+            onClick={closeMenus}
+            className="hidden lg:flex items-center cursor-pointer"
+          >
             {currentLogo ? (
               <img
                 src={currentLogo}
@@ -297,7 +295,11 @@ export default function Header() {
             ) : null}
           </Link>
 
-          <Link to="/" className="flex lg:hidden items-center cursor-pointer">
+          <Link
+            to="/"
+            onClick={closeMenus}
+            className="flex lg:hidden items-center cursor-pointer"
+          >
             {currentLogo ? (
               <img
                 src={currentLogo}
@@ -322,6 +324,7 @@ export default function Header() {
                 >
                   <NavLink
                     to={item.href}
+                    onClick={closeMenus}
                     className={`${linkBase} ${underline} gap-1.5`}
                   >
                     <span>{t(item.text)}</span>
@@ -357,6 +360,7 @@ export default function Header() {
                             >
                               <NavLink
                                 to={game.href}
+                                onClick={closeMenus}
                                 className="group flex items-center justify-between rounded-[18px] px-4 py-3 text-[14px] font-medium text-[#231f20] transition-all duration-300 hover:bg-[#231f20] hover:text-white"
                               >
                                 <span>{t(game.text)}</span>
@@ -376,6 +380,7 @@ export default function Header() {
               <NavLink
                 key={item.id}
                 to={item.href}
+                onClick={closeMenus}
                 className={`${linkBase} ${underline}`}
               >
                 {t(item.text)}
@@ -389,6 +394,7 @@ export default function Header() {
             <NavLink
               key={item.id}
               to={item.href}
+              onClick={closeMenus}
               className={`${linkBase} gap-2 ${underline}`}
             >
               <span>{t(item.text)}</span>
@@ -552,6 +558,7 @@ export default function Header() {
                                       >
                                         <NavLink
                                           to={game.href}
+                                          onClick={closeMenus}
                                           className="group flex items-center justify-between rounded-[16px] px-4 py-3 text-[15px] font-medium text-white/78 transition-all duration-300 hover:bg-white/8 hover:text-white"
                                         >
                                           <span>{t(game.text)}</span>
@@ -572,6 +579,7 @@ export default function Header() {
                       <motion.div key={item.id} variants={itemVariants}>
                         <NavLink
                           to={item.href}
+                          onClick={closeMenus}
                           className="group flex cursor-pointer items-center justify-between"
                         >
                           <span className="relative inline-block text-[22px] font-medium text-white">
@@ -598,6 +606,7 @@ export default function Header() {
                     <motion.div key={item.id} variants={itemVariants}>
                       <NavLink
                         to={item.href}
+                        onClick={closeMenus}
                         className="group flex cursor-pointer items-center justify-between"
                       >
                         <span className="relative inline-flex items-center gap-2 text-[17px] font-medium text-white">
@@ -628,7 +637,7 @@ export default function Header() {
                         <button
                           key={lang.id}
                           type="button"
-                          onClick={() => changeLanguage(lang.code)}
+                          onClick={() => handleLanguageSelect(lang.code)}
                           className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold tracking-wide transition-all duration-300 ${isActiveLang
                             ? "border-[#c12030] bg-[#c12030] text-white"
                             : "border-white/15 bg-white/5 text-white hover:border-[#c12030]"
