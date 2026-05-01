@@ -22,6 +22,312 @@ import {
 
 const LANG_KEYS = ["tr", "en", "ru", "fr"];
 
+//#region GAMES, GAMESPAGE, GAMESDETAIL ile ilgilidir. 
+const MASTER_GAMES_PAGE_KEY = "GameDetails";
+const SYNCED_GAMES_PAGE_KEYS = ["GamesPage", "Games", "Header"];
+
+const isSyncedGamesField = (pageKey, section, field) => {
+    if (!SYNCED_GAMES_PAGE_KEYS.includes(pageKey)) return false;
+
+    if (
+        (pageKey === "GamesPage" || pageKey === "Games") &&
+        section?.id === "games" &&
+        field?.id === "items"
+    ) {
+        return true;
+    }
+
+    if (
+        pageKey === "Header" &&
+        section?.id === "gamesDropdown" &&
+        field?.id === "gameItems"
+    ) {
+        return true;
+    }
+
+    return false;
+};
+
+const getFieldValueById = (page, sectionId, fieldId) => {
+    const section = page?.sections?.find((item) => item.id === sectionId);
+    const field = section?.fields?.find((item) => item.id === fieldId);
+    return field?.value ?? null;
+};
+
+const replaceFieldValueById = (page, sectionId, fieldId, nextValue) => {
+    const next = deepClone(page);
+
+    next.sections = next.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+
+        return {
+            ...section,
+            fields: section.fields.map((field) => {
+                if (field.id !== fieldId) return field;
+
+                return {
+                    ...field,
+                    value: nextValue,
+                };
+            }),
+        };
+    });
+
+    return next;
+};
+
+const localizedFromName = (game) => {
+    return game?.name || game?.title || {
+        tr: "",
+        en: "",
+        fr: "",
+        ru: "",
+    };
+};
+
+const getImageObject = (image, fallbackAlt) => {
+    if (!image) {
+        return {
+            url: "",
+            alt: fallbackAlt || emptyLocalizedValue(),
+        };
+    }
+
+    if (typeof image === "string") {
+        return {
+            url: image,
+            alt: fallbackAlt || emptyLocalizedValue(),
+        };
+    }
+
+    return {
+        url: image.url || image.image || "",
+        alt: image.alt || fallbackAlt || emptyLocalizedValue(),
+    };
+};
+
+const mapMasterGamesToGamesPageItems = (masterGames) => {
+    return masterGames.map((game, index) => {
+        const title = localizedFromName(game);
+        const category = game.category || "pc-games";
+        const slug = game.slug || game.id || `game-${index + 1}`;
+
+        return {
+            id: String(index + 1).padStart(2, "0"),
+            slug,
+            title,
+            category,
+            image: getImageObject(game.heroImage || game.image, {
+                tr: `${title.tr || slug} oyun görseli`,
+                en: `${title.en || slug} game image`,
+                fr: `Image du jeu ${title.fr || slug}`,
+                ru: `Изображение игры ${title.ru || slug}`,
+            }),
+            hoverImage: getImageObject(game.hoverImage || game.heroImage || game.image, {
+                tr: `${title.tr || slug} önizleme görseli`,
+                en: `${title.en || slug} preview image`,
+                fr: `Image d’aperçu de ${title.fr || slug}`,
+                ru: `Превью изображение ${title.ru || slug}`,
+            }),
+            description: game.description || game.intro?.text || emptyLocalizedValue(),
+            stores: (game.platforms || []).map((platform) => {
+                const key = platform.key || platform.id;
+
+                if (key === "steam") {
+                    return {
+                        id: "steam",
+                        name: "Steam",
+                        icon: "steam",
+                        href: platform.href || "#",
+                    };
+                }
+
+                if (key === "epic") {
+                    return {
+                        id: "epic-games",
+                        name: "Epic Games",
+                        icon: "epicGames",
+                        href: platform.href || "#",
+                    };
+                }
+
+                if (key === "googleplay") {
+                    return {
+                        id: "google-play",
+                        name: "Google Play",
+                        icon: "googlePlay",
+                        href: platform.href || "#",
+                    };
+                }
+
+                if (key === "appstore") {
+                    return {
+                        id: "app-store",
+                        name: "App Store",
+                        icon: "appStore",
+                        href: platform.href || "#",
+                    };
+                }
+
+                return {
+                    id: key || `store-${Date.now()}`,
+                    name: platform.name || key || "Store",
+                    icon: key || "",
+                    href: platform.href || "#",
+                };
+            }),
+            link: game.detailPath || `/games/${slug}`,
+            status: game.status || {
+                tr: "Geliştiriliyor",
+                en: "In Development",
+                fr: "En développement",
+                ru: "В разработке",
+            },
+        };
+    });
+};
+
+const mapMasterGamesToGamesItems = (masterGames) => {
+    return masterGames.map((game, index) => {
+        const title = localizedFromName(game);
+        const category = game.category || "pc-games";
+        const slug = game.slug || game.id || `game-${index + 1}`;
+
+        return {
+            id: String(index + 1).padStart(2, "0"),
+            slug,
+            category,
+            link: game.detailPath || `/games/${slug}`,
+            title,
+            categoryLabel: game.label || {
+                tr: "Oyun",
+                en: "Game",
+                fr: "Jeu",
+                ru: "Игра",
+            },
+            image: getImageObject(game.heroImage || game.image, {
+                tr: `${title.tr || slug} oyun görseli`,
+                en: `${title.en || slug} game image`,
+                fr: `Image du jeu ${title.fr || slug}`,
+                ru: `Изображение игры ${title.ru || slug}`,
+            }),
+            description: game.description || game.intro?.text || emptyLocalizedValue(),
+            stores: (game.platforms || []).map((platform) => {
+                const key = platform.key || platform.id;
+
+                if (key === "steam") {
+                    return {
+                        id: "steam",
+                        name: "Steam",
+                        href: platform.href || "#",
+                    };
+                }
+
+                if (key === "epic") {
+                    return {
+                        id: "epic-games",
+                        name: "Epic Games",
+                        href: platform.href || "#",
+                    };
+                }
+
+                if (key === "googleplay") {
+                    return {
+                        id: "google-play",
+                        name: "Google Play",
+                        href: platform.href || "#",
+                    };
+                }
+
+                if (key === "appstore") {
+                    return {
+                        id: "app-store",
+                        name: "App Store",
+                        href: platform.href || "#",
+                    };
+                }
+
+                return {
+                    id: key || `store-${Date.now()}`,
+                    name: platform.name || key || "Store",
+                    href: platform.href || "#",
+                };
+            }),
+            hoverStatus: game.hoverStatus || {
+                tr: "2026’da Yakında",
+                en: "Coming Soon in 2026",
+                fr: "Bientôt disponible en 2026",
+                ru: "Скоро в 2026",
+            },
+            status: game.status || {
+                tr: "Geliştiriliyor",
+                en: "In Development",
+                fr: "En développement",
+                ru: "В разработке",
+            },
+        };
+    });
+};
+
+const mapMasterGamesToHeaderGameItems = (masterGames) => {
+    return masterGames.map((game, index) => {
+        const title = localizedFromName(game);
+        const slug = game.slug || game.id || `game-${index + 1}`;
+
+        return {
+            id: slug,
+            text: title,
+            slug,
+            href: game.detailPath || `/games/${slug}`,
+        };
+    });
+};
+
+const syncGamesFromMaster = async (masterPage) => {
+    const masterGames = getFieldValueById(masterPage, "games", "items") || [];
+
+    const gamesPage = await getPageByKey("GamesPage");
+    const gamesSection = await getPageByKey("Games");
+    const headerPage = await getPageByKey("Header");
+
+    const nextGamesPage = replaceFieldValueById(
+        gamesPage,
+        "games",
+        "items",
+        mapMasterGamesToGamesPageItems(masterGames)
+    );
+
+    const nextGamesSection = replaceFieldValueById(
+        gamesSection,
+        "games",
+        "items",
+        mapMasterGamesToGamesItems(masterGames)
+    );
+
+    const nextHeaderPage = replaceFieldValueById(
+        headerPage,
+        "gamesDropdown",
+        "gameItems",
+        mapMasterGamesToHeaderGameItems(masterGames)
+    );
+
+    await savePageByKey("GamesPage", {
+        title: nextGamesPage.title,
+        sections: nextGamesPage.sections,
+    });
+
+    await savePageByKey("Games", {
+        title: nextGamesSection.title,
+        sections: nextGamesSection.sections,
+    });
+
+    await savePageByKey("Header", {
+        title: nextHeaderPage.title,
+        sections: nextHeaderPage.sections,
+    });
+};
+//#endregion
+
 const panelShell = {
     minHeight: "100vh",
     display: "grid",
@@ -137,6 +443,46 @@ const emptyLocalizedValue = () => ({
     ru: "",
     fr: "",
 });
+
+const slugifyText = (value = "") => {
+    return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/ğ/g, "g")
+        .replace(/ü/g, "u")
+        .replace(/ş/g, "s")
+        .replace(/ı/g, "i")
+        .replace(/ö/g, "o")
+        .replace(/ç/g, "c")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+};
+
+const getGameNameForSlug = (game) => {
+    return (
+        game?.name?.en ||
+        game?.name?.tr ||
+        game?.title?.en ||
+        game?.title?.tr ||
+        game?.id ||
+        "new-game"
+    );
+};
+
+const buildGameSlug = (game) => {
+    return slugifyText(getGameNameForSlug(game)) || `game-${Date.now()}`;
+};
+
+const normalizeGameRoutingFields = (game) => {
+    const slug = game.slug || buildGameSlug(game);
+
+    return {
+        ...game,
+        id: game.id || slug,
+        slug,
+        detailPath: game.detailPath || `/games/${slug}`,
+    };
+};
 
 const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -264,7 +610,9 @@ function AdminPanel() {
     const [loadingPage, setLoadingPage] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
+    const [messageType, setMessageType] = useState("");
     const [search, setSearch] = useState("");
+    const [gameCategoryOptions, setGameCategoryOptions] = useState([]);
 
     const filteredPages = useMemo(() => {
         if (!search.trim()) return pages;
@@ -295,6 +643,43 @@ function AdminPanel() {
         };
 
         fetchPages();
+    }, []);
+
+    useEffect(() => {
+        const fetchGameCategoryOptions = async () => {
+            try {
+                const gamesPage = await getPageByKey("GamesPage");
+
+                const tabsSection = gamesPage?.sections?.find(
+                    (section) => section.id === "tabs"
+                );
+
+                const tabsField = tabsSection?.fields?.find(
+                    (field) => field.id === "items"
+                );
+
+                const tabs = Array.isArray(tabsField?.value) ? tabsField.value : [];
+
+                const options = tabs
+                    .filter((tab) => tab.value && tab.value !== "all")
+                    .map((tab) => ({
+                        value: tab.value,
+                        label: tab.label || {
+                            tr: tab.value,
+                            en: tab.value,
+                            fr: tab.value,
+                            ru: tab.value,
+                        },
+                    }));
+
+                setGameCategoryOptions(options);
+            } catch (error) {
+                console.error("Game category options yüklenemedi:", error);
+                setGameCategoryOptions([]);
+            }
+        };
+
+        fetchGameCategoryOptions();
     }, []);
 
     useEffect(() => {
@@ -347,7 +732,25 @@ function AdminPanel() {
     const handleAddListItem = (sectionIndex, fieldIndex, path = []) => {
         const field = selectedPageData.sections[sectionIndex].fields[fieldIndex];
         const currentValue = field.value;
-        const newItem = createNewListItem(field);
+        let newItem = createNewListItem(field);
+
+        const isMasterGamesItems =
+            selectedPageData?.pageKey === MASTER_GAMES_PAGE_KEY &&
+            selectedPageData?.sections?.[sectionIndex]?.id === "games" &&
+            field?.id === "items" &&
+            path.length === 0;
+
+        if (isMasterGamesItems) {
+            newItem = {
+                ...newItem,
+                name: newItem.name || emptyLocalizedValue(),
+                category: newItem.category || gameCategoryOptions[0]?.value || "pc-games",
+                detailPath: newItem.detailPath || "",
+                slug: newItem.slug || "",
+            };
+
+            newItem = normalizeGameRoutingFields(newItem);
+        }
 
         if (!path.length) {
             const next = Array.isArray(currentValue) ? [...currentValue, newItem] : [newItem];
@@ -396,25 +799,191 @@ function AdminPanel() {
         }
     };
 
+    const preparePageBeforeSave = (page) => {
+        if (page?.pageKey !== MASTER_GAMES_PAGE_KEY) return page;
+
+        const next = deepClone(page);
+
+        next.sections = next.sections.map((section) => {
+            if (section.id !== "games") return section;
+
+            return {
+                ...section,
+                fields: section.fields.map((field) => {
+                    if (field.id !== "items" || !Array.isArray(field.value)) return field;
+
+                    return {
+                        ...field,
+                        value: field.value.map((game) => normalizeGameRoutingFields(game)),
+                    };
+                }),
+            };
+        });
+
+        return next;
+    };
+
     const handleSave = async () => {
         if (!selectedPageData) return;
 
         try {
             setSaving(true);
             setMessage("");
+            setMessageType("");
 
-            await savePageByKey(selectedPageData.pageKey, {
-                title: selectedPageData.title,
-                sections: selectedPageData.sections,
+            const pageToSave =
+                typeof preparePageBeforeSave === "function"
+                    ? preparePageBeforeSave(selectedPageData)
+                    : selectedPageData;
+
+            setSelectedPageData(pageToSave);
+
+            await savePageByKey(pageToSave.pageKey, {
+                title: pageToSave.title,
+                sections: pageToSave.sections,
             });
 
-            setMessage("Kaydedildi.");
+            if (pageToSave.pageKey === MASTER_GAMES_PAGE_KEY) {
+                await syncGamesFromMaster(pageToSave);
+            }
+
+            setMessage("Güncellendi.");
+            setMessageType("success");
         } catch (error) {
             console.error(error);
-            setMessage(error.message || "Kaydetme işlemi başarısız.");
+            setMessage("Kaydedilemedi. Lütfen oturumu yenileyip tekrar deneyin.");
+            setMessageType("error");
         } finally {
             setSaving(false);
         }
+    };
+
+    const renderCategorySelectEditor = ({
+        label,
+        value,
+        onChange,
+    }) => {
+        const options = gameCategoryOptions.length
+            ? gameCategoryOptions
+            : [
+                {
+                    value: "pc-games",
+                    label: {
+                        tr: "PC Oyunları",
+                        en: "PC Games",
+                        fr: "Jeux PC",
+                        ru: "Игры для ПК",
+                    },
+                },
+            ];
+
+        return (
+            <div style={fieldRowStyle}>
+                {label ? <span style={labelStyle}>{label}</span> : null}
+
+                <select
+                    value={value || options[0]?.value || "pc-games"}
+                    onChange={(e) => onChange(e.target.value)}
+                    style={{
+                        ...inputStyle,
+                        cursor: "pointer",
+                        background: "#fff",
+                    }}
+                >
+                    {options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {(option.label?.tr || option.label?.en || option.value)} — {option.value}
+                        </option>
+                    ))}
+                </select>
+
+                <div
+                    style={{
+                        fontSize: "12px",
+                        color: "#2563eb",
+                        fontWeight: 600,
+                    }}
+                >
+                    Bu seçenekler GamesPage içindeki tab kategorilerinden otomatik gelir.
+                </div>
+            </div>
+        );
+    };
+
+    const renderGameRouteEditor = ({
+        label,
+        value,
+        sectionIndex,
+        fieldIndex,
+        path,
+    }) => {
+        const gamePath = path.slice(0, -1);
+        const fieldKey = path[path.length - 1];
+
+        const currentGames = selectedPageData.sections[sectionIndex].fields[fieldIndex].value;
+        let currentGame = currentGames;
+
+        for (let i = 0; i < gamePath.length; i += 1) {
+            currentGame = currentGame?.[gamePath[i]];
+        }
+
+        const generatedSlug = buildGameSlug(currentGame);
+        const generatedDetailPath = `/games/${generatedSlug}`;
+
+        const applyAutoValue = () => {
+            if (fieldKey === "slug") {
+                handleNestedChange(sectionIndex, fieldIndex, path, generatedSlug);
+
+                const detailPathPath = [...gamePath, "detailPath"];
+                handleNestedChange(sectionIndex, fieldIndex, detailPathPath, generatedDetailPath);
+                return;
+            }
+
+            if (fieldKey === "detailPath") {
+                handleNestedChange(sectionIndex, fieldIndex, path, generatedDetailPath);
+            }
+        };
+
+        return (
+            <div style={fieldRowStyle}>
+                {label ? <span style={labelStyle}>{label}</span> : null}
+
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <input
+                        value={value ?? ""}
+                        onChange={(e) =>
+                            handleNestedChange(sectionIndex, fieldIndex, path, e.target.value)
+                        }
+                        style={inputStyle}
+                    />
+
+                    <button
+                        type="button"
+                        onClick={applyAutoValue}
+                        style={{
+                            ...smallButtonStyle,
+                            whiteSpace: "nowrap",
+                            borderColor: "#bfdbfe",
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                        }}
+                    >
+                        Otomatik Oluştur
+                    </button>
+                </div>
+
+                <div
+                    style={{
+                        fontSize: "12px",
+                        color: "#2563eb",
+                        fontWeight: 600,
+                    }}
+                >
+                    Önerilen değer:{" "}
+                    <strong>{fieldKey === "slug" ? generatedSlug : generatedDetailPath}</strong>
+                </div>
+            </div>
+        );
     };
 
     const renderPrimitiveEditor = ({
@@ -786,6 +1355,35 @@ function AdminPanel() {
             );
         }
 
+        const lastPathKey = path[path.length - 1];
+
+        const isGameCategoryField =
+            selectedPageData?.pageKey === MASTER_GAMES_PAGE_KEY &&
+            lastPathKey === "category";
+
+        if (isGameCategoryField) {
+            return renderCategorySelectEditor({
+                label: label || "category",
+                value: value || gameCategoryOptions[0]?.value || "pc-games",
+                onChange: (nextValue) =>
+                    handleNestedChange(sectionIndex, fieldIndex, path, nextValue),
+            });
+        }
+
+        const isGameRouteField =
+            selectedPageData?.pageKey === MASTER_GAMES_PAGE_KEY &&
+            (lastPathKey === "slug" || lastPathKey === "detailPath");
+
+        if (isGameRouteField) {
+            return renderGameRouteEditor({
+                label: label || lastPathKey,
+                value,
+                sectionIndex,
+                fieldIndex,
+                path,
+            });
+        }
+
         return renderPrimitiveEditor({
             label,
             value: value ?? "",
@@ -795,15 +1393,52 @@ function AdminPanel() {
         });
     };
 
+    const renderSyncedGamesWarning = () => {
+        return (
+            <div
+                style={{
+                    border: "1px solid #bfdbfe",
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    borderRadius: "16px",
+                    padding: "14px 16px",
+                    marginBottom: "14px",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                    fontWeight: 700,
+                }}
+            >
+                Bu oyun listesi senkron çalışır. Oyunları sadece{" "}
+                <strong>GameDetails</strong> sayfasındaki <strong>Game Detail Items</strong>{" "}
+                alanından değiştirebilirsiniz. Bu alan burada sadece önizleme amaçlıdır.
+            </div>
+        );
+    };
+
     const renderField = (field, sectionIndex, fieldIndex) => {
+        const section = selectedPageData?.sections?.[sectionIndex];
+
+        const isReadonlySyncedGames = isSyncedGamesField(
+            selectedPageData?.pageKey,
+            section,
+            field
+        );
+
+        const isMasterGamesField =
+            selectedPageData?.pageKey === MASTER_GAMES_PAGE_KEY &&
+            section?.id === "games" &&
+            field?.id === "items";
+
         return (
             <div
                 key={`field-${sectionIndex}-${fieldIndex}`}
                 style={{
-                    border: "1px solid #e5e7eb",
+                    border: isMasterGamesField
+                        ? "1px solid #bfdbfe"
+                        : "1px solid #e5e7eb",
                     borderRadius: "18px",
                     padding: "16px",
-                    background: "#fcfdff",
+                    background: isMasterGamesField ? "#eff6ff" : "#fcfdff",
                     marginBottom: "14px",
                 }}
             >
@@ -827,20 +1462,46 @@ function AdminPanel() {
                     </div>
                 </div>
 
-                {field.type === "image"
-                    ? renderImageEditor({
+                {isReadonlySyncedGames ? (
+                    <>
+                        {renderSyncedGamesWarning()}
+
+                        <div
+                            style={{
+                                opacity: 0.85,
+                                pointerEvents: "none",
+                                filter: "grayscale(0.1)",
+                                background: "#eff6ff",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: "18px",
+                                padding: "14px",
+                            }}
+                        >
+                            {renderAnyValue({
+                                value: field.value,
+                                sectionIndex,
+                                fieldIndex,
+                                path: [],
+                                label: field.label || field.id,
+                            })}
+                        </div>
+                    </>
+                ) : field.type === "image" ? (
+                    renderImageEditor({
                         label: field.label,
                         value: field.value,
                         onChange: (nextValue) => updateFieldValue(sectionIndex, fieldIndex, nextValue),
                         onUpload: (file) => handleUploadImage(sectionIndex, fieldIndex, [], file),
                     })
-                    : renderAnyValue({
+                ) : (
+                    renderAnyValue({
                         value: field.value,
                         sectionIndex,
                         fieldIndex,
                         path: [],
                         label: field.label || field.id,
-                    })}
+                    })
+                )}
             </div>
         );
     };
@@ -933,6 +1594,33 @@ function AdminPanel() {
                         <div style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px" }}>
                             İçerik düzenleme görünümü
                         </div>
+
+                        {SYNCED_GAMES_PAGE_KEYS.includes(selectedPageData?.pageKey) ? (
+                            <div
+                                style={{
+                                    marginTop: "8px",
+                                    color: "#b91c1c",
+                                    fontSize: "13px",
+                                    fontWeight: 700,
+                                }}
+                            >
+                                Bu sayfadaki oyun verileri GameDetails üzerinden senkronize edilir. Buradan düzenlenemez.
+                            </div>
+                        ) : null}
+
+                        {selectedPageData?.pageKey === MASTER_GAMES_PAGE_KEY ? (
+                            <div
+                                style={{
+                                    marginTop: "8px",
+                                    color: "#047857",
+                                    fontSize: "13px",
+                                    fontWeight: 700,
+                                }}
+                            >
+                                Bu sayfa merkez oyun verisidir. Kaydedildiğinde GamesPage, Games ve Header otomatik güncellenir.
+                            </div>
+                        ) : null}
+
                     </div>
 
                     <button
@@ -955,12 +1643,34 @@ function AdminPanel() {
                         style={{
                             ...cardStyle,
                             marginBottom: "16px",
-                            borderColor: message === "Kaydedildi." ? "#bbf7d0" : "#fecaca",
-                            background: message === "Kaydedildi." ? "#f0fdf4" : "#fef2f2",
-                            color: message === "Kaydedildi." ? "#166534" : "#991b1b",
+                            borderColor: messageType === "success" ? "#86efac" : "#fecaca",
+                            background:
+                                messageType === "success"
+                                    ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
+                                    : "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+                            color: messageType === "success" ? "#166534" : "#991b1b",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            fontWeight: 800,
+                            fontSize: "14px",
                         }}
                     >
-                        {message}
+                        <span
+                            style={{
+                                width: "10px",
+                                height: "10px",
+                                borderRadius: "999px",
+                                background: messageType === "success" ? "#22c55e" : "#ef4444",
+                                boxShadow:
+                                    messageType === "success"
+                                        ? "0 0 0 4px rgba(34,197,94,0.15)"
+                                        : "0 0 0 4px rgba(239,68,68,0.15)",
+                                flexShrink: 0,
+                            }}
+                        />
+
+                        <span>{message}</span>
                     </div>
                 ) : null}
 

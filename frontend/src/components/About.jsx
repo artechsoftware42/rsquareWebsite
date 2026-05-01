@@ -1,149 +1,144 @@
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Monitor, Gamepad2, Users, Sparkles } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
-const aboutCards = [
-  {
-    icon: Users,
-    title: "Small Team, Sharp Vision",
-    text: "We are a compact and focused game team building projects with strong direction, fast iteration, and attention to detail.",
-  },
-  {
-    icon: Monitor,
-    title: "Built for PC & Mobile",
-    text: "Our games are crafted for PC and mobile platforms, designed to feel immersive, polished, and satisfying from the very first minute.",
-  },
-  {
-    icon: Gamepad2,
-    title: "Gameplay First",
-    text: "We create experiences driven by atmosphere, tension, mystery, and mechanics that keep players engaged from start to finish.",
-  },
-  {
-    icon: Sparkles,
-    title: "Style with Identity",
-    text: "Every project is shaped with its own visual identity, mood, and tone to leave a lasting impression beyond gameplay alone.",
-  },
-];
+const API_BASE = import.meta.env.VITE_API_URL;
+
+const getLocalizedValue = (value, language, fallback = "") => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value[language] ?? value.tr ?? value.en ?? fallback;
+  }
+
+  return value ?? fallback;
+};
+
+const findSection = (sections, sectionId) => {
+  return sections.find((section) => section?.id === sectionId);
+};
+
+const findFieldValue = (section, fieldId) => {
+  if (!section || !Array.isArray(section.fields)) return null;
+
+  return section.fields.find((field) => field.id === fieldId)?.value ?? null;
+};
 
 function About() {
+  const { language } = useLanguage();
+  const [pageData, setPageData] = useState(null);
+
+  useEffect(() => {
+    const fetchAbout = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/pages/About`);
+        const data = await res.json();
+
+        if (!res.ok || !data) {
+          throw new Error(data?.error || "About verisi alınamadı.");
+        }
+
+        setPageData(data);
+      } catch (error) {
+        console.error("About data error:", error);
+        setPageData(null);
+      }
+    };
+
+    fetchAbout();
+  }, []);
+
+  const content = useMemo(() => {
+    const sections = Array.isArray(pageData?.sections) ? pageData.sections : [];
+
+    const statementSection = findSection(sections, "statement");
+    const featuresSection = findSection(sections, "features");
+    const footerSection = findSection(sections, "footer");
+
+    return {
+      statement: {
+        titleLineOne: findFieldValue(statementSection, "titleLineOne"),
+        titleLineTwo: findFieldValue(statementSection, "titleLineTwo"),
+        description: findFieldValue(statementSection, "description"),
+      },
+      features: findFieldValue(featuresSection, "items") || [],
+      footer: {
+        locationText: findFieldValue(footerSection, "locationText"),
+      },
+    };
+  }, [pageData]);
+
+  const t = (value, fallback = "") => {
+    return getLocalizedValue(value, language, fallback);
+  };
+
   return (
-    <>
-      <section className="relative w-full overflow-hidden bg-[#0d0d0d] px-6 py-20 sm:px-8 md:px-10 lg:px-12 xl:px-16">
-        
-        {/* BACKGROUND GLOW */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute left-[-120px] top-[-80px] h-[260px] w-[260px] rounded-full blur-3xl" />
-          <div className="absolute bottom-[-120px] right-[-100px] h-[320px] w-[320px] rounded-full  blur-3xl" />
-        </div>
+    <section className="w-full bg-[#0d0d0d] text-white py-28 px-6 md:px-12 lg:px-20">
+      <div className="max-w-[1100px] mx-auto">
+        <motion.h2
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          viewport={{ once: true }}
+          className="text-[34px] md:text-[52px] leading-[1.2] font-semibold tracking-tight"
+        >
+          {t(content.statement.titleLineOne, "We don’t just build games.")}
+          <br />
+          <span className="text-white/40">
+            {t(
+              content.statement.titleLineTwo,
+              "We craft controlled experiences."
+            )}
+          </span>
+        </motion.h2>
 
-        <div className="relative z-10 mx-auto max-w-[1400px]">
+        <div className="w-20 h-[2px] bg-[#c12030] mt-8" />
 
-          {/* TOP */}
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+        <motion.p
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          viewport={{ once: true }}
+          className="mt-10 max-w-[600px] text-white/60 text-[16px] leading-relaxed"
+        >
+          {t(
+            content.statement.description,
+            "We are a small, focused team building PC and mobile games with a strong emphasis on gameplay clarity, system design, and performance. No unnecessary complexity. No noise."
+          )}
+        </motion.p>
 
-            {/* LEFT */}
+        <div className="w-full h-px bg-white/10 my-16" />
+
+        <div className="grid md:grid-cols-2 gap-16">
+          {content.features.map((item, index) => (
             <motion.div
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              key={item.id || index}
+              initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7 }}
-              className="max-w-2xl"
-            >
-              <span className="mb-4 inline-flex rounded-full border border-[#ef4645]/25 bg-[#991b1f]/30 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-[#ef4645]">
-                About Us
-              </span>
-
-              <h2 className="mt-4 text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-                We build games with atmosphere, identity, and purpose.
-              </h2>
-
-              <p className="mt-6 text-white/70">
-                We are an independent game team focused on creating memorable
-                experiences for PC and mobile players. Our approach combines
-                strong visual direction, intentional gameplay design, and worlds
-                that feel distinct from the moment players step into them.
-              </p>
-
-              <p className="mt-5 text-white/70">
-                From social deduction to mystery and trap-driven adventures, we
-                build each project with a clear tone and a strong core idea.
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
-                  PC Games
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
-                  Desktop Experiences
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
-                  Immersive Design
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85">
-                  Distinct Worlds
-                </span>
-              </div>
-            </motion.div>
-
-            {/* RIGHT CARDS */}
-            <motion.div
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2"
             >
-              {aboutCards.map((card, index) => {
-                const Icon = card.icon;
+              <h3 className="text-xl font-medium mb-4">
+                {t(item.title)}
+              </h3>
 
-                return (
-                  <motion.div
-                    key={card.title}
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="group rounded-3xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm hover:border-[#ef4645]/30"
-                  >
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#991b1f] via-[#c12030] to-[#ef4645] text-white">
-                      <Icon size={22} />
-                    </div>
-
-                    <h3 className="text-white font-semibold">
-                      {card.title}
-                    </h3>
-
-                    <p className="mt-3 text-sm text-white/60">
-                      {card.text}
-                    </p>
-                  </motion.div>
-                );
-              })}
+              <p className="text-white/60 leading-relaxed text-[15px]">
+                {t(item.text)}
+              </p>
             </motion.div>
-
-          </div>
-
-          {/* BOTTOM */}
-          <motion.div
-            initial={{ opacity: 0, y: 26 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="mt-16 rounded-[28px] border border-[#ef4645]/15 bg-gradient-to-r from-[#991b1f]/30 to-[#0d0d0d] p-6 sm:p-8 lg:p-10"
-          >
-            <h3 className="text-white text-2xl font-bold sm:text-3xl">
-              We do not just make games. We build worlds.
-            </h3>
-
-            <p className="mt-4 text-white/70 max-w-2xl">
-              Every project we create is designed to feel immersive, visually
-              strong, and emotionally engaging. We aim to deliver experiences
-              players remember long after they finish playing.
-            </p>
-          </motion.div>
-
+          ))}
         </div>
-      </section>
-    </>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          viewport={{ once: true }}
+          className="mt-20 flex items-center justify-between text-white/40 text-sm"
+        >
+          <span></span>
+          <span>{t(content.footer.locationText, "Based in Türkiye")}</span>
+        </motion.div>
+      </div>
+    </section>
   );
 }
 

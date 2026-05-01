@@ -12,18 +12,23 @@ import CareerPage from "./CareerPage";
 import ShareYourGame from "./ShareYourGame";
 import PrivacyPolicy from "./PrivacyPolicy";
 import GameDetailPage from "./GameDetailPage";
+import ScrollToTop from "../components/ScrollToTop";
 
 function Pages() {
   const location = useLocation();
 
-  const hideHeaderRoutes = ["/admin", "/admin-login"];
-  const shouldShowHeader = !hideHeaderRoutes.includes(location.pathname);
+  const hiddenLayoutRoutes = ["/admin", "/admin-login"];
+
+  const shouldShowHeader = !hiddenLayoutRoutes.includes(location.pathname);
+  const shouldShowFooter = !hiddenLayoutRoutes.includes(location.pathname);
 
   return (
     <>
+      <ScrollToTop />
       {shouldShowHeader && <Header />}
 
       <Routes>
+
         <Route path="/" element={<Home />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route
@@ -42,7 +47,7 @@ function Pages() {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/games/:slug" element={<GameDetailPage />} />
       </Routes>
-      <Footer />
+      {shouldShowFooter && <Footer />}
     </>
   );
 }
