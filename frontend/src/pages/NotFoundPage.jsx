@@ -1,36 +1,63 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { FiArrowUpRight } from "react-icons/fi";
 
-export default function NotFoundPage() {
-    const navigate = useNavigate();
-
+const NotFound404 = () => {
     return (
-        <div className="min-h-screen bg-[#0d0d0d] flex flex-col items-center justify-center px-4 text-center">
+        <main className="relative min-h-screen w-full overflow-hidden bg-[#0d0d0d] text-white select-none">
 
-            <img
-                src="/images/404img.png"
-                alt="404 Not Found"
-                draggable={false}
-                className="w-[340px] sm:w-[460px] md:w-[560px] lg:w-[640px] select-none pointer-events-none mb-2"
-            />
-
-            <div className="max-w-xl -mt-2 sm:-mt-3 md:-mt-4">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">
-                    404 | Sayfa Bulunamadı
-                </h1>
-
-                <p className="text-gray-400 text-sm sm:text-base md:text-lg mb-5">
-                    Aradığınız sayfa mevcut değil veya taşınmış olabilir.
-                </p>
-
-                <button
-                    onClick={() => navigate("/")}
-                    className="bg-[#02acfa] text-white px-6 py-3 rounded-lg text-sm sm:text-base font-medium 
-          hover:opacity-90 transition-all duration-300 cursor-pointer"
-                >
-                    Anasayfaya Dön
-                </button>
+            {/* BACKGROUND EFFECT */}
+            <div className="pointer-events-none absolute inset-0">
+                <div className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-[120px]" />
+                <div className="absolute right-[-120px] top-[-120px] h-[300px] w-[300px] rounded-full bg-[#c12030]/20 blur-[110px]" />
+                <div className="absolute bottom-[-140px] left-[-120px] h-[320px] w-[320px] rounded-full bg-[#c12030]/10 blur-[120px]" />
             </div>
-        </div>
+
+            <section className="relative z-10 flex min-h-screen w-full items-center justify-center px-5 py-20">
+                <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
+
+                    {/* TOP TEXT */}
+                    <p className="mb-5 text-xs font-semibold uppercase tracking-[0.45em] text-white/40 sm:text-sm">
+                        Error
+                    </p>
+
+                    {/* 404 */}
+                    <h1 className="relative text-[7rem] font-black leading-none tracking-[-0.08em] text-white sm:text-[10rem] md:text-[13rem] lg:text-[16rem]">
+                        404
+                        <span className="absolute inset-0 -z-10 text-[#c12030]/25 blur-md">
+                            404
+                        </span>
+                    </h1>
+
+                    {/* CONTENT */}
+                    <div className="mt-6 max-w-2xl">
+                        <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-4xl md:text-5xl">
+                            This page <span className="text-[#c12030]">does not exist</span>.
+                        </h2>
+
+                        <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-white/55 sm:text-base">
+                            The page you are looking for might have been{" "}
+                            <span className="text-white">moved</span>,{" "}
+                            <span className="text-[#c12030]">deleted</span>, or never existed.
+                            You can return to the{" "}
+                            <span className="text-white">main page</span> to continue.
+                        </p>
+                    </div>
+
+                    {/* BUTTON */}
+                    <Link
+                        to="/"
+                        draggable="false"
+                        className="group mt-10 inline-flex items-center gap-3 rounded-full bg-white px-7 py-4 text-sm font-semibold text-[#0d0d0d] transition-all duration-300 hover:bg-[#c12030] hover:text-white active:scale-95 sm:px-8"
+                    >
+                        Back to Home
+                        <FiArrowUpRight className="text-lg transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    </Link>
+
+                </div>
+            </section>
+        </main>
     );
-}
+};
+
+export default NotFound404;

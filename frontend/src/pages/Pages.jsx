@@ -18,7 +18,7 @@ import NotFoundPage from "./NotFoundPage";
 function Pages() {
   const location = useLocation();
 
-  const hiddenLayoutRoutes = ["/admin", "/admin-login", "/404"];
+  const hiddenLayoutRoutes = ["/0eyNG-924N9-6OFrh-TGF-UNCBQ-yrP", "/r2Ws-Nw2G-CCwM-IyWyN-AVp-7VsXC", "/404"];
 
   const shouldShowHeader = !hiddenLayoutRoutes.includes(location.pathname);
   const shouldShowFooter = !hiddenLayoutRoutes.includes(location.pathname);
@@ -30,9 +30,9 @@ function Pages() {
 
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/r2Ws-Nw2G-CCwM-IyWyN-AVp-7VsXC" element={<AdminLogin />} />
         <Route
-          path="/admin"
+          path="/0eyNG-924N9-6OFrh-TGF-UNCBQ-yrP"
           element={
             <AdminProtectedRoute>
               <AdminPanel />

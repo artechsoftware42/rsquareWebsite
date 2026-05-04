@@ -64,6 +64,7 @@ function GamesPage() {
 
   const bgX = useTransform(scrollY, [0, 400], [0, 220]);
   const contentX = useTransform(scrollY, [0, 400], [0, -130]);
+
   const heroOpacity = useTransform(scrollY, [0, 270], [1, 0]);
   const heroBlur = useTransform(scrollY, [0, 270], [0, 7]);
   const heroFilter = useMotionTemplate`blur(${heroBlur}px)`;
@@ -77,6 +78,11 @@ function GamesPage() {
       try {
         const data = await fetchJson(`${API_BASE}/api/pages/GamesPage`);
         if (!data) return;
+
+        if (!Array.isArray(data.sections)) {
+          window.location.href = "/404";
+          return;
+        }
 
         setPageData(data);
       } catch (error) {
@@ -115,6 +121,25 @@ function GamesPage() {
     return getLocalizedValue(value, language, fallback);
   };
 
+  const renderStoreIcon = (store) => {
+    if (typeof store.icon === "string") {
+      return getStoreIcon(store.icon);
+    }
+
+    if (store.icon?.url) {
+      return (
+        <img
+          src={store.icon.url}
+          alt={t(store.icon.alt, store.name || "Store icon")}
+          className="h-4 w-4 object-contain"
+          draggable={false}
+        />
+      );
+    }
+
+    return getStoreIcon(store.key || store.id);
+  };
+
   const filteredGames = useMemo(() => {
     if (activeTab === "all") return content.games;
 
@@ -150,13 +175,13 @@ function GamesPage() {
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75, delay: 0.12 }}
-          className="relative z-10 max-w-3xl text-center"
+          className="relative z-10 w-full max-w-5xl text-center"
         >
-          <span className="text-xs sm:text-sm tracking-[0.45em] text-white/45 uppercase">
+          <span className="block text-center text-xs sm:text-sm tracking-[0.45em] text-white/45 uppercase">
             {t(content.hero.eyebrow, "Featured Releases")}
           </span>
 
-          <h2 className="mt-6 text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-[-0.07em] uppercase">
+          <h2 className="mx-auto mt-6 w-full text-center text-[48px] sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-[-0.045em] uppercase leading-none">
             {t(content.hero.title, "Our Games")}
           </h2>
 
@@ -166,7 +191,7 @@ function GamesPage() {
               scale: descScale,
               opacity: descOpacity,
             }}
-            className="mx-auto mt-7 max-w-2xl text-lg sm:text-xl text-white/78 leading-relaxed"
+            className="mx-auto mt-7 max-w-2xl text-center text-lg sm:text-xl text-white/78 leading-relaxed"
           >
             {t(
               content.hero.description,
@@ -308,7 +333,7 @@ function GamesPage() {
                             className="group/store inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-white/55 transition-all duration-300 hover:border-[#ef4645]/50 hover:bg-[#ef4645]/10 hover:text-[#ef4645]"
                           >
                             <span className="text-[16px] transition-transform duration-300 group-hover/store:scale-110">
-                              {getStoreIcon(store.icon)}
+                              {renderStoreIcon(store)}
                             </span>
                             <span>{store.name}</span>
                           </a>

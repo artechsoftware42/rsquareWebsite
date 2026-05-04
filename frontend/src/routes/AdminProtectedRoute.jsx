@@ -57,7 +57,7 @@ function AdminProtectedRoute({ children }) {
     }
 
     if (status === "unauthorized") {
-        return <Navigate to="/admin-login" replace />;
+        return <Navigate to="/r2Ws-Nw2G-CCwM-IyWyN-AVp-7VsXC" replace />;
     }
 
     return children;
