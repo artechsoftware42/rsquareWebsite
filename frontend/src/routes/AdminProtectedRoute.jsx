@@ -1,39 +1,59 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import {
-    getAdminMe,
-    clearAdminSessionMarkers,
-    hasActiveAdminSessionMarker,
-} from "../services/adminAuthService";
+
+const API_BASE = import.meta.env.VITE_API_URL;
 
 function AdminProtectedRoute({ children }) {
-    const [status, setStatus] = useState(() => {
-        return hasActiveAdminSessionMarker() ? "authorized" : "loading";
-    });
+    const [status, setStatus] = useState("checking");
 
     useEffect(() => {
-        const checkAuth = async () => {
+        const checkAdmin = async () => {
             try {
-                const data = await getAdminMe();
+                const hasTabSession =
+                    sessionStorage.getItem("admin_tab_session") === "active";
 
-                if (data?.success) {
-                    setStatus("authorized");
+                if (!hasTabSession) {
+                    await fetch(`${API_BASE}/api/admin-auth/logout`, {
+                        method: "POST",
+                        credentials: "include",
+                    }).catch(() => { });
+
+                    setStatus("unauthorized");
                     return;
                 }
 
-                clearAdminSessionMarkers();
-                setStatus("unauthorized");
+                const res = await fetch(`${API_BASE}/api/admin-auth/me`, {
+                    method: "GET",
+                    credentials: "include",
+                });
+
+                if (!res.ok) {
+                    sessionStorage.removeItem("admin_tab_session");
+                    setStatus("unauthorized");
+                    return;
+                }
+
+                const data = await res.json().catch(() => null);
+
+                if (!data?.success) {
+                    sessionStorage.removeItem("admin_tab_session");
+                    setStatus("unauthorized");
+                    return;
+                }
+
+                setStatus("authorized");
             } catch (error) {
-                clearAdminSessionMarkers();
+                console.error("Admin auth check error:", error);
+                sessionStorage.removeItem("admin_tab_session");
                 setStatus("unauthorized");
             }
         };
 
-        checkAuth();
+        checkAdmin();
     }, []);
 
-    if (status === "loading") {
-        return <div style={{ padding: "24px" }}>Kontrol ediliyor...</div>;
+    if (status === "checking") {
+        return null;
     }
 
     if (status === "unauthorized") {

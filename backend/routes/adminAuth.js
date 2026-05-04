@@ -1,15 +1,13 @@
 import express from "express";
+import bcrypt from "bcrypt";
 import AdminAuth from "../models/AdminAuth.js";
+import { adminLoginLimiter } from "../middleware/adminRateLimit.js";
 
 const router = express.Router();
 
-router.post("/login", async (req, res) => {
+router.post("/login", adminLoginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
-
-        console.log("LOGIN REQUEST BODY:", { username, password });
-        console.log("LOGIN SESSION ID BEFORE:", req.sessionID);
-        console.log("LOGIN SESSION BEFORE:", req.session);
 
         if (!username || !password) {
             return res.status(400).json({
@@ -23,8 +21,6 @@ router.post("/login", async (req, res) => {
             isActive: true,
         }).lean();
 
-        console.log("ADMIN DOC:", adminDoc);
-
         if (!adminDoc) {
             return res.status(404).json({
                 success: false,
@@ -32,11 +28,22 @@ router.post("/login", async (req, res) => {
             });
         }
 
-        const isMatch =
-            username.trim() === String(adminDoc.username).trim() &&
-            password === String(adminDoc.password);
+        if (!adminDoc.passwordHash) {
+            return res.status(500).json({
+                success: false,
+                message: "Admin şifre ayarı güvenli formatta değil.",
+            });
+        }
 
-        console.log("PASSWORD MATCH:", isMatch);
+        const usernameMatch =
+            username.trim() === String(adminDoc.username || "").trim();
+
+        const passwordMatch = await bcrypt.compare(
+            password,
+            String(adminDoc.passwordHash)
+        );
+
+        const isMatch = usernameMatch && passwordMatch;
 
         if (!isMatch) {
             return res.status(401).json({
@@ -50,8 +57,6 @@ router.post("/login", async (req, res) => {
             isAuthenticated: true,
         };
 
-        console.log("LOGIN SESSION AFTER ASSIGN:", req.session);
-
         req.session.save((err) => {
             if (err) {
                 console.error("SESSION SAVE ERROR:", err);
@@ -60,9 +65,6 @@ router.post("/login", async (req, res) => {
                     message: "Session kaydedilemedi.",
                 });
             }
-
-            console.log("LOGIN SESSION SAVED ID:", req.sessionID);
-            console.log("LOGIN SESSION SAVED DATA:", req.session);
 
             return res.status(200).json({
                 success: true,
@@ -83,10 +85,6 @@ router.post("/login", async (req, res) => {
 
 router.get("/me", (req, res) => {
     try {
-        console.log("ME COOKIE HEADER:", req.headers.cookie);
-        console.log("ME SESSION ID:", req.sessionID);
-        console.log("ME SESSION DATA:", req.session);
-
         if (!req.session?.admin?.isAuthenticated) {
             return res.status(401).json({
                 success: false,

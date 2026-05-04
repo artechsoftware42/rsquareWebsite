@@ -40,6 +40,7 @@ const AdminLogin = () => {
             });
 
             if (data.success) {
+                sessionStorage.setItem("admin_tab_session", "active");
                 navigate("/admin", { replace: true });
                 return;
             }

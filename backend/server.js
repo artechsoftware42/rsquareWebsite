@@ -52,7 +52,6 @@ app.use(
             secure: false,
             sameSite: "lax",
             path: "/",
-            maxAge: 1000 * 60 * 60 * 24,
         },
     })
 );
@@ -110,7 +109,7 @@ app.put("/api/pages/:name", adminAuthMiddleware, async (req, res) => {
 });
 
 app.use("/api", titleSettingsRoutes);
-app.use("/api/upload", uploadRoutes);
+app.use("/api/upload", adminAuthMiddleware, uploadRoutes);
 app.use("/images", express.static(path.join(process.cwd(), "public", "images")));
 
 mongoose
